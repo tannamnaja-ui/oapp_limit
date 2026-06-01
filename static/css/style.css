@@ -35,7 +35,7 @@ html, body {
   box-shadow: 0 2px 8px rgba(26,79,114,0.25);
 }
 .right-panel-header {
-  background: linear-gradient(90deg, #2471A3 0%, #5499C9 100%) !important;
+  background: linear-gradient(90deg, #0E7C6A 0%, #1AAB8A 100%) !important;
   min-height: 48px;
 }
 .app-section-header {

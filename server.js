@@ -105,29 +105,85 @@ async function verifyLogin(username, password) {
   const active = cfg.active || 'mysql';
   const conn   = await openConn({ db_type: active, ...cfg });
   try {
-    // Step 1: ดึง record ของ username จาก officer
-    const sql = active === 'mysql'
-      ? 'SELECT officer_login_name, officer_login_password_md5 FROM officer WHERE officer_login_name = ? LIMIT 1'
-      : 'SELECT officer_login_name, officer_login_password_md5 FROM officer WHERE officer_login_name = $1 LIMIT 1';
-
-    const rows = await runQuery(conn, active, sql, [username]);
+    // Step 1: ดึง officer record
+    const sql1 = active === 'mysql'
+      ? 'SELECT officer_id, officer_login_password_md5 FROM officer WHERE officer_login_name = ? LIMIT 1'
+      : 'SELECT officer_id, officer_login_password_md5 FROM officer WHERE officer_login_name = $1 LIMIT 1';
+    const rows = await runQuery(conn, active, sql1, [username]);
 
     if (!rows || rows.length === 0) {
       console.log(`[Login] ไม่พบ username: ${username}`);
-      return false;
+      return { ok: false, reason: 'invalid' };
     }
 
-    // Step 2: ดึง hash ที่เก็บในฐานข้อมูล
+    // Step 2: ตรวจสอบรหัสผ่าน MD5
     const storedHash = (rows[0].officer_login_password_md5 || rows[0][1] || '').trim();
+    const inputHash  = md5(password);
+    const match      = storedHash.toLowerCase() === inputHash.toLowerCase();
+    console.log(`[Login] user=${username} | match=${match}`);
 
-    // Step 3: MD5 password ที่ user กรอก แล้ว compare (case-insensitive)
-    const inputHash = md5(password);
+    if (!match) return { ok: false, reason: 'invalid' };
 
-    const match = storedHash.toLowerCase() === inputHash.toLowerCase();
+    // Step 3: ตรวจสอบสิทธิ์ task_id='164'
+    const officerId = rows[0].officer_id || rows[0][0];
+    const sql2 = active === 'mysql'
+      ? `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = ?`
+      : `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = $1`;
 
-    console.log(`[Login] user=${username} | stored=${storedHash} | input_md5=${inputHash} | match=${match}`);
+    const accessRows = await runQuery(conn, active, sql2, [officerId]);
+    const cnt = parseInt(accessRows[0]?.cnt ?? accessRows[0]?.[0] ?? 0);
+    console.log(`[Login] user=${username} officer_id=${officerId} task164_access=${cnt}`);
 
-    return match;
+    if (cnt === 0) return { ok: false, reason: 'no_access' };
+
+    return { ok: true };
+  } finally {
+    try { await conn.end(); } catch (_) {}
+  }
+}
+
+// ── Verify connection-settings login (task 77) ──────────────────────────────
+async function verifyConnLogin(username, password) {
+  const cfg    = loadConfig();
+  const active = cfg.active || 'mysql';
+  const conn   = await openConn({ db_type: active, ...cfg });
+  try {
+    const sql1 = active === 'mysql'
+      ? 'SELECT officer_id, officer_login_password_md5 FROM officer WHERE officer_login_name = ? LIMIT 1'
+      : 'SELECT officer_id, officer_login_password_md5 FROM officer WHERE officer_login_name = $1 LIMIT 1';
+    const rows = await runQuery(conn, active, sql1, [username]);
+    if (!rows || rows.length === 0) return { ok: false, reason: 'invalid' };
+
+    const storedHash = (rows[0].officer_login_password_md5 || rows[0][1] || '').trim();
+    if (storedHash.toLowerCase() !== md5(password).toLowerCase())
+      return { ok: false, reason: 'invalid' };
+
+    const officerId = rows[0].officer_id ?? rows[0][0];
+    const sql2 = active === 'mysql'
+      ? `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '77' AND l.officer_id = ?`
+      : `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '77' AND l.officer_id = $1`;
+    const aRows = await runQuery(conn, active, sql2, [officerId]);
+    const cnt77 = parseInt(aRows[0]?.cnt ?? aRows[0]?.[0] ?? 0);
+    console.log(`[ConnLogin] user=${username} officer_id=${officerId} task77=${cnt77}`);
+
+    if (cnt77 === 0) return { ok: false, reason: 'no_access' };
+    return { ok: true };
   } finally {
     try { await conn.end(); } catch (_) {}
   }
@@ -144,32 +200,59 @@ app.get('/', (req, res) =>
   res.redirect(req.session.user ? '/main' : '/login'));
 
 // Login
-app.get('/login', (req, res) => res.render('login', { error: null }));
+app.get('/login', (req, res) => res.render('login', { error: null, noAccess: false }));
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
-    return res.render('login', { error: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+    return res.render('login', { error: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', noAccess: false });
   try {
-    if (await verifyLogin(username, password)) {
+    const result = await verifyLogin(username, password);
+    if (result.ok) {
       req.session.user = username;
       return res.redirect('/main');
     }
-    res.render('login', { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+    if (result.reason === 'no_access') {
+      return res.render('login', { error: null, noAccess: true });
+    }
+    res.render('login', { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', noAccess: false });
   } catch (e) {
     res.render('login', {
-      error: `ไม่สามารถเชื่อมต่อฐานข้อมูลได้ — กรุณาตั้งค่าการเชื่อมต่อก่อน\n(${e.message})`
+      error: `ไม่สามารถเชื่อมต่อฐานข้อมูลได้ — กรุณาตั้งค่าการเชื่อมต่อก่อน\n(${e.message})`,
+      noAccess: false
     });
   }
 });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
+// ── API: Connection settings auth (task 77) ────────────────────────────────
+app.post('/api/conn-auth', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password)
+    return res.json({ ok: false, reason: 'invalid', msg: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+  try {
+    const result = await verifyConnLogin(username, password);
+    if (result.ok) {
+      req.session.connAuthed = true;
+      return res.json({ ok: true });
+    }
+    if (result.reason === 'no_access')
+      return res.json({ ok: false, reason: 'no_access' });
+    return res.json({ ok: false, reason: 'invalid', msg: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+  } catch (e) {
+    return res.json({ ok: false, reason: 'error', msg: `เชื่อมต่อฐานข้อมูลไม่ได้: ${e.message}` });
+  }
+});
+
 // Connection settings
-app.get('/connection', (req, res) =>
-  res.render('connection', { cfg: loadConfig(), alert: null }));
+app.get('/connection', (req, res) => {
+  if (!req.session.connAuthed) return res.redirect('/');
+  res.render('connection', { cfg: loadConfig(), alert: null });
+});
 
 app.post('/connection', async (req, res) => {
+  if (!req.session.connAuthed) return res.redirect('/');
   const { action, active } = req.body;
   const newCfg = {
     active: active || 'mysql',
@@ -825,6 +908,58 @@ app.get('/debug/login-check', async (req, res) => {
   } catch (e) {
     return res.json({ error: e.message });
   }
+});
+
+// ── Debug: ตรวจสอบ access task 164 ────────────────────────────────────────
+app.get('/debug/access-check', async (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.json({ error: 'ต้องส่ง ?username=xxx' });
+  try {
+    const cfg    = loadConfig();
+    const active = cfg.active || 'mysql';
+    const conn   = await openConn({ db_type: active, ...cfg });
+
+    const sql1 = active === 'mysql'
+      ? 'SELECT officer_id, officer_login_name FROM officer WHERE officer_login_name = ? LIMIT 1'
+      : 'SELECT officer_id, officer_login_name FROM officer WHERE officer_login_name = $1 LIMIT 1';
+    const rows = await runQuery(conn, active, sql1, [username]);
+    if (!rows || rows.length === 0) {
+      await conn.end();
+      return res.json({ found: false });
+    }
+    const officerId = rows[0].officer_id ?? rows[0][0];
+    const sql2 = active === 'mysql'
+      ? `SELECT t.officer_task_id, g.officer_group_id, l.officer_id
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = ?`
+      : `SELECT t.officer_task_id, g.officer_group_id, l.officer_id
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = $1`;
+    const accessRows = await runQuery(conn, active, sql2, [officerId]);
+
+    const sql3 = active === 'mysql'
+      ? `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = ?`
+      : `SELECT COUNT(*) AS cnt
+         FROM officer_group_task_access t
+         INNER JOIN officer_group g ON g.officer_group_id = t.officer_group_id
+         INNER JOIN officer_group_list l ON l.officer_group_id = g.officer_group_id
+         WHERE t.officer_task_id = '164' AND l.officer_id = $1`;
+    const cntRows = await runQuery(conn, active, sql3, [officerId]);
+    await conn.end();
+
+    res.json({
+      username, officer_id: officerId, officer_id_type: typeof officerId,
+      cnt_raw: cntRows[0], access_detail_rows: accessRows
+    });
+  } catch (e) { res.json({ error: e.message }); }
 });
 
 // ── Debug: ตรวจสอบ raw type ของ oapp_date ─────────────────────────────────

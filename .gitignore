@@ -8,3 +8,8 @@ db_config.json
 *.log
 .DS_Store
 Thumbs.db
+# installer binaries (tools + compiled output)
+_installer/*.exe
+_installer/*.msi
+_output/
+ตัวติดตั้ง/

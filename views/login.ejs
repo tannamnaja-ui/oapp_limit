@@ -58,19 +58,164 @@
       </form>
 
       <div class="login-divider"><span>หรือ</span></div>
-      <a href="/connection" class="btn login-settings-btn w-100">
+      <button type="button" class="btn login-settings-btn w-100" onclick="openConnLogin()">
         <i class="bi bi-gear me-2"></i>ตั้งค่าการเชื่อมต่อฐานข้อมูล
-      </a>
+      </button>
     </div>
 
     <div class="login-footer text-center">oapp_limit v1.0</div>
   </div>
 </div>
+
+<!-- ── Modal: เข้าสู่ระบบ ตั้งค่าการเชื่อมต่อ ─────────────────────────── -->
+<div class="modal fade" id="connLoginModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+        <div style="font-size:2.6rem;color:#1A5276;line-height:1">
+          <i class="bi bi-gear-wide-connected"></i>
+        </div>
+      </div>
+      <div class="modal-body px-4 pt-2 pb-2">
+        <h5 class="text-center fw-bold mb-3" style="color:#1A5276">เข้าสู่ระบบ — ตั้งค่าการเชื่อมต่อ</h5>
+        <div id="connAlert" class="d-none alert py-2 mb-3" style="font-size:0.92rem"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">ชื่อผู้ใช้</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            <input type="text" id="connUser" class="form-control" placeholder="กรอกชื่อผู้ใช้"
+                   onkeydown="if(event.key==='Enter')submitConnLogin()">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">รหัสผ่าน</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" id="connPwd" class="form-control" placeholder="กรอกรหัสผ่าน"
+                   onkeydown="if(event.key==='Enter')submitConnLogin()">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center gap-2 pb-4">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x me-1"></i>ยกเลิก
+        </button>
+        <button type="button" id="connLoginBtn" class="btn btn-primary px-4" onclick="submitConnLogin()">
+          <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: ไม่มีสิทธิ์เข้าใช้งานระบบ (task 164) ──────────────────────── -->
+<div class="modal fade" id="noAccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+        <div style="font-size:3rem;color:#e74c3c;line-height:1">
+          <i class="bi bi-shield-exclamation"></i>
+        </div>
+      </div>
+      <div class="modal-body text-center px-4 py-3">
+        <h5 class="fw-bold mb-2" style="color:#c0392b">ไม่มีสิทธิ์เข้าใช้งาน</h5>
+        <p class="mb-1" style="font-size:0.97rem">บัญชีของท่านไม่ได้รับอนุญาตให้เข้าใช้งานระบบนี้</p>
+        <p class="text-muted" style="font-size:0.9rem">กรุณาติดต่อ <strong>Admin ผู้ดูแลระบบ</strong> เพื่อขอสิทธิ์การเข้าถึง</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pb-4">
+        <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-2"></i>ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: ไม่มีสิทธิ์ตั้งค่าการเชื่อมต่อ (task 77) ─────────────────── -->
+<div class="modal fade" id="noConnAccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+        <div style="font-size:3rem;color:#e74c3c;line-height:1">
+          <i class="bi bi-shield-lock"></i>
+        </div>
+      </div>
+      <div class="modal-body text-center px-4 py-3">
+        <h5 class="fw-bold mb-2" style="color:#c0392b">ไม่มีสิทธิ์ตั้งค่าการเชื่อมต่อ</h5>
+        <p class="mb-1" style="font-size:0.97rem">บัญชีของท่านไม่ได้รับอนุญาตให้เข้าถึงการตั้งค่าการเชื่อมต่อฐานข้อมูล</p>
+        <p class="text-muted" style="font-size:0.9rem">กรุณาติดต่อ <strong>Admin ผู้ดูแลระบบ</strong> เพื่อขอสิทธิ์การเข้าถึง</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pb-4">
+        <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-2"></i>ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function togglePwd() {
   const p = document.getElementById('pwd'), e = document.getElementById('pwd-eye');
   if (p.type === 'password') { p.type = 'text';     e.className = 'bi bi-eye-slash'; }
   else                        { p.type = 'password'; e.className = 'bi bi-eye'; }
 }
+
+function openConnLogin() {
+  document.getElementById('connUser').value = '';
+  document.getElementById('connPwd').value  = '';
+  const al = document.getElementById('connAlert');
+  al.className = 'd-none alert py-2 mb-3';
+  al.textContent = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('connLoginModal')).show();
+  setTimeout(() => document.getElementById('connUser').focus(), 400);
+}
+
+async function submitConnLogin() {
+  const username = document.getElementById('connUser').value.trim();
+  const password = document.getElementById('connPwd').value;
+  const al       = document.getElementById('connAlert');
+  const btn      = document.getElementById('connLoginBtn');
+
+  if (!username || !password) {
+    al.className = 'alert alert-warning py-2 mb-3';
+    al.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังตรวจสอบ…';
+  try {
+    const r    = await fetch('/api/conn-auth', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('connLoginModal')).hide();
+      window.location.href = '/connection';
+      return;
+    }
+    if (data.reason === 'no_access') {
+      bootstrap.Modal.getInstance(document.getElementById('connLoginModal')).hide();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('noConnAccessModal')).show();
+      return;
+    }
+    al.className = 'alert alert-danger py-2 mb-3';
+    al.textContent = data.msg || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+  } catch(e) {
+    al.className = 'alert alert-danger py-2 mb-3';
+    al.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ';
+  }
+}
+
+<% if (locals.noAccess) { %>
+document.addEventListener('DOMContentLoaded', function () {
+  new bootstrap.Modal(document.getElementById('noAccessModal')).show();
+});
+<% } %>
 </script>
 </body></html>

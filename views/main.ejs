@@ -8,13 +8,16 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="/css/style.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
   <style>
     /* layout helpers */
     body   { background-color:#B8D9EF!important; font-family:'Sarabun','Tahoma',sans-serif; }
-    .split-left  { width:58%; min-width:380px; background-color:#C5DFEF; border-right:2px solid #93C6E0; }
-    .split-right { width:42%; background-color:#C5DFEF; }
+    .split-left  { width:58%; min-width:380px; background-color:#C5DFEF; border-right:2px solid #4BBFA8; }
+    .split-right { width:42%; background-color:#D0EEE8; }
     .filter-bar  { background-color:#1A5276; border-bottom:3px solid #0E3858; }
     .filter-bar label, .filter-bar span { color:#fff!important; }
+    #fClinic + .ts-wrapper { width:320px!important; min-width:320px!important; }
+    .ts-wrapper { min-width:0; }
     .filter-bar .form-control, .filter-bar .form-select {
       font-size:1rem!important; min-height:38px!important;
       border:1.5px solid #5DADE2; background:#EAF4FB;
@@ -40,7 +43,7 @@
       <i class="bi bi-person-circle me-1"></i><%= user %>
     </span>
     <div class="ms-auto d-flex gap-2">
-      <a href="/connection" class="btn btn-medium-blue py-2">
+      <a href="javascript:void(0)" onclick="gotoConn()" class="btn btn-medium-blue py-2">
         <i class="bi bi-gear me-1"></i>ตั้งค่าการเชื่อมต่อ
       </a>
       <a href="/logout" class="btn btn-danger py-2">
@@ -54,7 +57,7 @@
   <div class="alert alert-warning mb-0 rounded-0 py-2 text-center" style="font-size:0.95rem">
     <i class="bi bi-exclamation-triangle me-1"></i>
     DB Error: <%= dbError %>
-    — <a href="/connection" class="fw-bold">ตั้งค่าการเชื่อมต่อ</a>
+    — <a href="javascript:void(0)" onclick="gotoConn()" class="fw-bold">ตั้งค่าการเชื่อมต่อ</a>
   </div>
   <% } %>
 
@@ -76,7 +79,7 @@
 
     <div class="d-flex align-items-center gap-2">
       <label class="fw-bold" style="font-size:1rem;white-space:nowrap">คลินิก</label>
-      <select id="fClinic" class="form-select" style="width:210px">
+      <select id="fClinic" class="form-select" style="width:320px">
         <option value="">— ทั้งหมด —</option>
         <% clinics.forEach(function(c){ %>
         <option value="<%= c.clinic||c[0] %>"><%= c.clinic||c[0] %> — <%= c.name||c[1] %></option>
@@ -225,155 +228,130 @@
         <button type="button" class="btn-close" onclick="hideAlert()"></button>
       </div>
 
-      <!-- Scrollable form -->
-      <div class="flex-fill overflow-auto px-3 py-2">
+      <!-- Form (no scroll) -->
+      <div class="flex-fill px-3 py-2 d-flex flex-column gap-2" style="overflow:hidden;font-size:0.88rem">
 
-        <!-- ข้อมูลการจำกัด -->
-        <div class="card mb-3">
-          <div class="card-header app-section-header">
-            <i class="bi bi-info-circle me-2"></i>ข้อมูลการจำกัด
+        <!-- กล่องข้อมูลหลัก -->
+        <div style="background:rgba(255,255,255,0.55);border-radius:14px;border:1px solid rgba(78,196,166,0.4);padding:12px 14px;box-shadow:0 2px 8px rgba(14,124,106,0.08)">
+
+          <!-- คลินิก -->
+          <div class="row align-items-center mb-2">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">คลินิก</label>
+            <div class="col-sm-8">
+              <select id="clinicSel" class="form-select form-select-sm" style="border-radius:8px">
+                <option value="">-- เลือกคลินิก --</option>
+                <% clinics.forEach(function(c){ %>
+                <option value="<%= c.clinic||c[0] %>"><%= c.clinic||c[0] %> — <%= c.name||c[1] %></option>
+                <% }) %>
+              </select>
+            </div>
           </div>
-          <div class="card-body">
 
-            <!-- คลินิก -->
-            <div class="row align-items-center mb-3">
-              <label class="col-sm-4 col-form-label fw-semibold">คลินิก</label>
-              <div class="col-sm-8">
-                <select id="clinicSel" class="form-select">
-                  <option value="">-- เลือกคลินิก --</option>
-                  <% clinics.forEach(function(c){ %>
-                  <option value="<%= c.clinic||c[0] %>">
-                    <%= c.clinic||c[0] %> — <%= c.name||c[1] %>
-                  </option>
-                  <% }) %>
-                </select>
-              </div>
+          <!-- วันที่ -->
+          <div class="row align-items-center mb-2">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">วันที่เริ่มต้น</label>
+            <div class="col-sm-4">
+              <input type="date" id="startDate" class="form-control form-control-sm" style="border-radius:8px">
             </div>
-
-            <!-- วันที่ -->
-            <div class="row align-items-center mb-3">
-              <label class="col-sm-4 col-form-label fw-semibold">วันที่เริ่มต้น</label>
-              <div class="col-sm-4">
-                <input type="date" id="startDate" class="form-control">
-              </div>
-              <label class="col-sm-1 col-form-label fw-semibold text-center">ถึง</label>
-              <div class="col-sm-3">
-                <input type="date" id="endDate" class="form-control">
-              </div>
+            <label class="col-sm-1 col-form-label fw-semibold text-center" style="font-size:0.85rem">ถึง</label>
+            <div class="col-sm-3">
+              <input type="date" id="endDate" class="form-control form-control-sm" style="border-radius:8px">
             </div>
+          </div>
 
-            <!-- สัปดาห์ที่ + วันหยุด -->
-            <div class="row align-items-center mb-3">
-              <label class="col-sm-4 col-form-label fw-semibold">สัปดาห์ที่</label>
-              <div class="col-sm-4">
-                <select id="weekSel" class="form-select">
-                  <option value="">None selected</option>
-                  <% [1,2,3,4,5].forEach(n=>{ %><option><%= n %></option><% }) %>
-                </select>
-              </div>
-              <div class="col-sm-4">
-                <div class="form-check ms-1">
-                  <input class="form-check-input" type="checkbox" id="noHoliday">
-                  <label class="form-check-label" for="noHoliday">ไม่สร้าง Slot วันหยุด</label>
+          <!-- สัปดาห์ที่ -->
+          <div class="row align-items-center mb-2">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">สัปดาห์ที่</label>
+            <div class="col-sm-4">
+              <select id="weekSel" class="form-select form-select-sm" style="border-radius:8px">
+                <option value="">None selected</option>
+                <% [1,2,3,4,5].forEach(n=>{ %><option><%= n %></option><% }) %>
+              </select>
+            </div>
+          </div>
+
+          <!-- วัน -->
+          <div class="row align-items-start mb-2">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">วัน</label>
+            <div class="col-sm-8">
+              <div style="background:#E8F8F4;border-radius:10px;border:1px solid #6DCBB8;padding:6px 10px">
+                <div class="mb-1">
+                  <button type="button" id="toggleDaysBtn" class="btn btn-sm"
+                          style="font-size:0.76rem;background:#E8F8F4;border:1.5px solid #1AAB8A;color:#0B7A60;padding:1px 10px;border-radius:20px;font-weight:600"
+                          onclick="toggleAllDays()">
+                    <i class="bi bi-check2-all me-1"></i>เลือกทั้งหมด
+                  </button>
                 </div>
-              </div>
-            </div>
-
-            <!-- วัน -->
-            <div class="row align-items-start mb-3">
-              <label class="col-sm-4 col-form-label fw-semibold pt-2">วัน</label>
-              <div class="col-sm-8">
-                <div class="day-grid">
-                  <!-- toggle all / clear -->
-                  <div class="mb-2">
-                    <button type="button" id="toggleDaysBtn"
-                            class="btn btn-sm"
-                            style="font-size:0.85rem;border:1px solid #27AE60;color:#27AE60;padding:2px 12px;border-radius:20px"
-                            onclick="toggleAllDays()">
-                      <i class="bi bi-check2-all me-1"></i>เลือกทั้งหมด
-                    </button>
-                  </div>
-                  <div class="row g-2">
-                    <% [['mon','จันทร์',false],['tue','อังคาร',false],
-                        ['wed','พุธ',false],['thu','พฤหัสบดี',false],
-                        ['fri','ศุกร์',false],['sat','เสาร์',false],
-                        ['sun','อาทิตย์',false]].forEach(function(d){ %>
-                    <div class="col-6">
-                      <div class="form-check">
-                        <input class="form-check-input day-check" type="checkbox"
-                               id="day_<%= d[0] %>" value="<%= d[0] %>" <%= d[2]?'checked':'' %>
-                               onchange="updateToggleDaysBtn()">
-                        <label class="form-check-label" for="day_<%= d[0] %>"><%= d[1] %></label>
-                      </div>
+                <div class="row g-1">
+                  <% [['mon','จันทร์'],['tue','อังคาร'],['wed','พุธ'],['thu','พฤหัสบดี'],
+                      ['fri','ศุกร์'],['sat','เสาร์'],['sun','อาทิตย์']].forEach(function(d){ %>
+                  <div class="col-4">
+                    <div class="form-check mb-0">
+                      <input class="form-check-input day-check" type="checkbox"
+                             id="day_<%= d[0] %>" value="<%= d[0] %>"
+                             onchange="updateToggleDaysBtn()" style="margin-top:2px">
+                      <label class="form-check-label" for="day_<%= d[0] %>" style="font-size:0.82rem"><%= d[1] %></label>
                     </div>
-                    <% }) %>
                   </div>
+                  <% }) %>
                 </div>
               </div>
             </div>
-
-            <!-- เวลา -->
-            <div class="row align-items-center mb-2">
-              <label class="col-sm-4 col-form-label fw-semibold">เวลาเริ่ม</label>
-              <div class="col-sm-4">
-                <input type="text" id="startTime" class="form-control text-center fw-semibold"
-                       maxlength="8" placeholder="HH:MM:SS"
-                       style="font-size:1rem;letter-spacing:1px"
-                       oninput="autoFmtTime(this)"
-                       onblur="validateTime(this)">
-              </div>
-              <label class="col-sm-1 col-form-label fw-semibold text-center">ถึง</label>
-              <div class="col-sm-3">
-                <input type="text" id="endTime" class="form-control text-center fw-semibold"
-                       maxlength="8" placeholder="HH:MM:SS"
-                       style="font-size:1rem;letter-spacing:1px"
-                       oninput="autoFmtTime(this)"
-                       onblur="validateTime(this)">
-              </div>
-            </div>
-            <div class="row mb-3">
-              <div class="col-sm-4"></div>
-              <div class="col-sm-8 d-flex align-items-center gap-3 flex-wrap">
-                <small style="color:#5D7080;font-size:0.85rem">
-                  รูปแบบ 24 ชม. &nbsp;ชั่วโมง:นาที:วินาที &nbsp;เช่น <strong>08:30:00</strong> หรือ <strong>13:00:00</strong>
-                </small>
-                <div class="form-check mb-0">
-                  <input class="form-check-input" type="checkbox" id="checkTime">
-                  <label class="form-check-label fw-semibold" for="checkTime"
-                         style="font-size:0.95rem;color:#1A4F72">
-                    check_time = Y
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <!-- จำนวนจำกัด -->
-            <div class="row align-items-center">
-              <label class="col-sm-4 col-form-label fw-semibold">จำนวนจำกัด <span class="text-danger">*</span></label>
-              <div class="col-sm-4">
-                <input type="number" id="limitCount" class="form-control" min="0"
-                       placeholder="0" required>
-              </div>
-              <div class="col-sm-4">
-                <span style="font-size:0.95rem;color:#5D7080">ราย / slot</span>
-              </div>
-            </div>
-
           </div>
+
+          <!-- check_time -->
+          <div class="row align-items-center mb-1">
+            <div class="col-sm-4"></div>
+            <div class="col-sm-8">
+              <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="checkTime">
+                <label class="form-check-label fw-semibold" for="checkTime" style="font-size:0.83rem;color:#0B5E50">check_time = Y</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- เวลา -->
+          <div class="row align-items-center mb-2">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">เวลาเริ่ม</label>
+            <div class="col-sm-4">
+              <input type="text" id="startTime" class="form-control form-control-sm text-center fw-semibold"
+                     maxlength="8" placeholder="HH:MM:SS" style="border-radius:8px"
+                     oninput="autoFmtTime(this)" onblur="validateTime(this)">
+            </div>
+            <label class="col-sm-1 col-form-label fw-semibold text-center" style="font-size:0.85rem">ถึง</label>
+            <div class="col-sm-3">
+              <input type="text" id="endTime" class="form-control form-control-sm text-center fw-semibold"
+                     maxlength="8" placeholder="HH:MM:SS" style="border-radius:8px"
+                     oninput="autoFmtTime(this)" onblur="validateTime(this)">
+            </div>
+          </div>
+
+          <!-- จำนวนจำกัด -->
+          <div class="row align-items-center mb-0">
+            <label class="col-sm-4 col-form-label fw-semibold" style="font-size:0.85rem;color:#0B5E50">จำนวนจำกัด <span class="text-danger">*</span></label>
+            <div class="col-sm-5">
+              <div class="input-group input-group-sm">
+                <input type="number" id="limitCount" class="form-control" min="0" placeholder="0" required
+                       style="border-radius:8px 0 0 8px">
+                <span class="input-group-text" style="font-size:0.82rem;border-radius:0 8px 8px 0">ราย/slot</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /กล่องข้อมูลหลัก -->
+
+        <!-- กล่องหมายเหตุ (แยกออกมา) -->
+        <div style="background:rgba(255,255,255,0.55);border-radius:14px;border:1.5px solid rgba(78,196,166,0.5);padding:10px 14px;box-shadow:0 2px 8px rgba(14,124,106,0.08)">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-chat-left-text" style="color:#0E7C6A;font-size:0.9rem"></i>
+            <span class="fw-semibold" style="font-size:0.85rem;color:#0B5E50">หมายเหตุ</span>
+          </div>
+          <textarea id="noteText" class="form-control form-control-sm"
+                    placeholder="หมายเหตุเพิ่มเติม..." rows="2"
+                    style="resize:none;border-radius:8px;border-color:#6DCBB8"></textarea>
         </div>
 
-        <!-- หมายเหตุ -->
-        <div class="card mb-3">
-          <div class="card-header app-section-header">
-            <i class="bi bi-chat-text me-2"></i>หมายเหตุ
-          </div>
-          <div class="card-body">
-            <textarea id="noteText" class="form-control" rows="3"
-                      placeholder="หมายเหตุเพิ่มเติม..."></textarea>
-          </div>
-        </div>
-
-      </div><!-- /scroll -->
+      </div><!-- /form -->
 
     </div><!-- /right -->
   </div><!-- /split -->
@@ -415,9 +393,11 @@
           <label class="col-sm-4 col-form-label fw-semibold">เวลา</label>
           <div class="col">
             <div class="d-flex align-items-center gap-2">
-              <input type="text" id="bStartTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px">
+              <input type="text" id="bStartTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px"
+                     oninput="autoFmtTime(this)" onblur="validateTime(this)">
               <span class="fw-semibold">ถึง</span>
-              <input type="text" id="bEndTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px">
+              <input type="text" id="bEndTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px"
+                     oninput="autoFmtTime(this)" onblur="validateTime(this)">
             </div>
             <small class="text-muted">รูปแบบ 24 ชม. เช่น 08:30:00</small>
           </div>
@@ -605,6 +585,7 @@ function fmtTime(v) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
 // ── Day checkbox: เลือกทั้งหมด / ล้างทั้งหมด ─────────────────────────────
 function toggleAllDays() {
@@ -651,17 +632,11 @@ function autoFmtTime(el) {
 // ตรวจสอบรูปแบบเวลาเมื่อ blur
 function validateTime(el) {
   const v = el.value.trim();
-  if (!v) return;                                   // ว่างก็ผ่าน
+  el.classList.remove('is-invalid', 'is-valid');
+  if (!v) return;
   const ok = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(v);
-  if (!ok) {
-    el.style.borderColor = '#E74C3C';
-    el.style.backgroundColor = '#FADBD8';
-    el.title = 'รูปแบบไม่ถูกต้อง ต้องเป็น HH:MM:SS เช่น 08:30:00';
-  } else {
-    el.style.borderColor = '#93C6E0';
-    el.style.backgroundColor = '#F0F8FE';
-    el.title = '';
-  }
+  el.classList.toggle('is-invalid', !ok);
+  el.title = ok ? '' : 'รูปแบบไม่ถูกต้อง ต้องเป็น HH:MM:SS เช่น 08:30:00';
 }
 
 // คืนค่า HH:MM:SS หรือ null (ใช้ก่อน fetch)
@@ -675,7 +650,9 @@ function getTimeVal(id) {
 
 // ── Flatpickr date pickers ────────────────────────────────────────────────
 let fpFrom, fpTo, fpStart, fpEnd, fpModal;
+let tsClinic, tsFClinic, tsMClinic;
 document.addEventListener('DOMContentLoaded', () => {
+  // Flatpickr
   const fpOpts = { dateFormat:'Y-m-d', altInput:true, altFormat:'d/m/Y',
                    locale:{ firstDayOfWeek:1 }, allowInput:true };
   fpFrom  = flatpickr('#fDateFrom', fpOpts);
@@ -683,6 +660,18 @@ document.addEventListener('DOMContentLoaded', () => {
   fpStart = flatpickr('#startDate', fpOpts);
   fpEnd   = flatpickr('#endDate',   fpOpts);
   fpModal = flatpickr('#mDate',     fpOpts);
+
+  // Tom Select — searchable clinic dropdowns
+  const tsOpts = {
+    create: false, allowEmptyOption: true,
+    placeholder: '-- เลือกคลินิก --',
+    searchField: ['text','value'],
+    maxOptions: 500
+  };
+  tsFClinic = new TomSelect('#fClinic',   tsOpts);
+  tsClinic  = new TomSelect('#clinicSel', tsOpts);
+  tsMClinic = new TomSelect('#mClinic',   tsOpts);
+
   // init bulk bar state จาก server-rendered rows
   updateBulkBar();
 });
@@ -695,7 +684,7 @@ function selectRow(tr, data) {
   tr.classList.add('row-sel');
   // Fill form with selected row data
   if (data) {
-    document.getElementById('clinicSel').value   = data.oapp_clinic || '';
+    if (tsClinic) tsClinic.setValue(data.oapp_clinic || ''); else document.getElementById('clinicSel').value = data.oapp_clinic || '';
     document.getElementById('limitCount').value  = data.oapp_limit  || '';
     document.getElementById('noteText').value    = data.limit_note  || '';
     if (data.oapp_date) {
@@ -768,7 +757,7 @@ async function filterRecords() {
 
 function clearFilter() {
   fpFrom.clear(); fpTo.clear();
-  document.getElementById('fClinic').value = '';
+  if (tsFClinic) tsFClinic.setValue(''); else document.getElementById('fClinic').value = '';
   filterRecords();
 }
 
@@ -860,9 +849,8 @@ function clearForm() {
   });
   fpStart.clear(); fpEnd.clear();
   document.getElementById('checkTime').checked = false;
-  ['clinicSel','weekSel'].forEach(id =>
-    document.getElementById(id).value = '');
-  document.getElementById('noHoliday').checked = false;
+  if (tsClinic) tsClinic.setValue(''); else document.getElementById('clinicSel').value = '';
+  document.getElementById('weekSel').value = '';
   document.querySelectorAll('.day-check').forEach(cb => cb.checked = false);
   updateToggleDaysBtn();
   if (selRow) selRow.classList.remove('row-sel');
@@ -882,7 +870,7 @@ function getFormValues() {
     end_time:    getTimeVal('endTime'),
     check_time:  document.getElementById('checkTime').checked ? 'Y' : '0',
     note:       document.getElementById('noteText').value,
-    noHoliday:  document.getElementById('noHoliday').checked
+    noHoliday:  false
   };
 }
 
@@ -945,7 +933,7 @@ async function createRecords() {
       if (data.filter) {
         if (data.filter.date_from) fpFrom.setDate(data.filter.date_from, true); else fpFrom.clear();
         if (data.filter.date_to)   fpTo.setDate(data.filter.date_to,   true); else fpTo.clear();
-        document.getElementById('fClinic').value   = data.filter.clinic    || '';
+        if (tsFClinic) tsFClinic.setValue(data.filter.clinic || ''); else document.getElementById('fClinic').value = data.filter.clinic || '';
       }
       filterRecords();
     }
@@ -968,7 +956,7 @@ function openModal(rowData = null) {
   if (isEdit) {
     document.getElementById('mId').value        = rowData.oapp_limit_id || '';
     fpModal.setDate(String(rowData.oapp_date||'').substring(0,10), true);
-    document.getElementById('mClinic').value    = rowData.oapp_clinic  || '';
+    if (tsMClinic) tsMClinic.setValue(rowData.oapp_clinic || ''); else document.getElementById('mClinic').value = rowData.oapp_clinic || '';
     document.getElementById('mLimit').value     = rowData.oapp_limit   ?? '0';
     document.getElementById('mStartTime').value = rowData.start_time   || '';
     document.getElementById('mEndTime').value   = rowData.end_time     || '';
@@ -977,7 +965,7 @@ function openModal(rowData = null) {
   } else {
     document.getElementById('mId').value        = '';
     fpModal.clear();
-    document.getElementById('mClinic').value    = '';
+    if (tsMClinic) tsMClinic.setValue(''); else document.getElementById('mClinic').value = '';
     document.getElementById('mLimit').value     = '0';
     document.getElementById('mStartTime').value = '';
     document.getElementById('mEndTime').value   = '';
@@ -996,9 +984,10 @@ async function deleteFromModal() {
     const res  = await fetch(`/api/records/${id}`, { method:'DELETE' });
     const data = await res.json();
     if (data.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
       showAlert('success','ลบรายการเรียบร้อยแล้ว');
-      filterRecords();
+      const eModal = document.getElementById('editModal');
+      eModal.addEventListener('hidden.bs.modal', () => filterRecords(), { once: true });
+      bootstrap.Modal.getInstance(eModal).hide();
     } else {
       setModalAlert('danger','ลบล้มเหลว: ' + data.msg);
     }
@@ -1029,9 +1018,10 @@ async function saveRecord() {
     });
     const data = await res.json();
     if (data.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
       showAlert('success', data.msg);
-      filterRecords();
+      const eModal2 = document.getElementById('editModal');
+      eModal2.addEventListener('hidden.bs.modal', () => filterRecords(), { once: true });
+      bootstrap.Modal.getInstance(eModal2).hide();
     } else {
       setModalAlert('danger', data.msg);
     }
@@ -1146,10 +1136,11 @@ async function saveBulkEdit() {
     });
     const data = await res.json();
     if (data.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('bulkEditModal')).hide();
       showAlert('success', data.msg);
       clearSelection();
-      filterRecords();
+      const bModal = document.getElementById('bulkEditModal');
+      bModal.addEventListener('hidden.bs.modal', () => filterRecords(), { once: true });
+      bootstrap.Modal.getInstance(bModal).hide();
     } else {
       const el = document.getElementById('bulkEditAlert');
       el.className = 'alert alert-danger py-2 mb-3';
@@ -1180,5 +1171,122 @@ function hideAlert() {
   const el = document.getElementById('formAlert');
   el.classList.remove('show'); el.classList.add('d-none');
 }
+
+// ── Connection settings login ─────────────────────────────────────────────
+function gotoConn() { openConnLogin(); }
+
+function openConnLogin() {
+  document.getElementById('connUser').value = '';
+  document.getElementById('connPwd').value  = '';
+  const al = document.getElementById('connAlert');
+  al.className = 'd-none alert py-2 mb-3';
+  al.textContent = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('connLoginModal')).show();
+  setTimeout(() => document.getElementById('connUser').focus(), 400);
+}
+
+async function submitConnLogin() {
+  const username = document.getElementById('connUser').value.trim();
+  const password = document.getElementById('connPwd').value;
+  const al       = document.getElementById('connAlert');
+  const btn      = document.getElementById('connLoginBtn');
+
+  if (!username || !password) {
+    al.className = 'alert alert-warning py-2 mb-3';
+    al.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังตรวจสอบ…';
+  try {
+    const r    = await fetch('/api/conn-auth', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('connLoginModal')).hide();
+      window.location.href = '/connection';
+      return;
+    }
+    if (data.reason === 'no_access') {
+      bootstrap.Modal.getInstance(document.getElementById('connLoginModal')).hide();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('noConnAccessModal')).show();
+      return;
+    }
+    al.className = 'alert alert-danger py-2 mb-3';
+    al.textContent = data.msg || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+  } catch(e) {
+    al.className = 'alert alert-danger py-2 mb-3';
+    al.textContent = 'เกิดข้อผิดพลาด: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ';
+  }
+}
 </script>
+
+<!-- ── Modal: เข้าสู่ระบบ ตั้งค่าการเชื่อมต่อ ─────────────────────────── -->
+<div class="modal fade" id="connLoginModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+        <div style="font-size:2.6rem;color:#1A5276;line-height:1">
+          <i class="bi bi-gear-wide-connected"></i>
+        </div>
+      </div>
+      <div class="modal-body px-4 pt-2 pb-2">
+        <h5 class="text-center fw-bold mb-3" style="color:#1A5276">เข้าสู่ระบบ — ตั้งค่าการเชื่อมต่อ</h5>
+        <div id="connAlert" class="d-none alert py-2 mb-3" style="font-size:0.92rem"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">ชื่อผู้ใช้</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            <input type="text" id="connUser" class="form-control" placeholder="กรอกชื่อผู้ใช้"
+                   onkeydown="if(event.key==='Enter')submitConnLogin()">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">รหัสผ่าน</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" id="connPwd" class="form-control" placeholder="กรอกรหัสผ่าน"
+                   onkeydown="if(event.key==='Enter')submitConnLogin()">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center gap-2 pb-4">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x me-1"></i>ยกเลิก
+        </button>
+        <button type="button" id="connLoginBtn" class="btn btn-primary px-4" onclick="submitConnLogin()">
+          <i class="bi bi-box-arrow-in-right me-1"></i>เข้าสู่ระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: ไม่มีสิทธิ์ตั้งค่าการเชื่อมต่อ (task 77) ─────────────────── -->
+<div class="modal fade" id="noConnAccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+        <div style="font-size:3rem;color:#e74c3c;line-height:1">
+          <i class="bi bi-shield-lock"></i>
+        </div>
+      </div>
+      <div class="modal-body text-center px-4 py-3">
+        <h5 class="fw-bold mb-2" style="color:#c0392b">ไม่มีสิทธิ์ตั้งค่าการเชื่อมต่อ</h5>
+        <p class="mb-1" style="font-size:0.97rem">บัญชีของท่านไม่ได้รับอนุญาตให้เข้าถึงการตั้งค่าการเชื่อมต่อฐานข้อมูล</p>
+        <p class="text-muted" style="font-size:0.9rem">กรุณาติดต่อ <strong>Admin ผู้ดูแลระบบ</strong> เพื่อขอสิทธิ์การเข้าถึง</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pb-4">
+        <button type="button" class="btn btn-danger px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-2"></i>ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 </body></html>
