@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-column min-vh-100 bg-light-blue">
+
+  <!-- Header -->
+  <div class="app-header d-flex align-items-center px-3 py-2">
+    <span class="fw-bold text-white fs-6">
+      <i class="bi bi-gear-fill me-2"></i>ตั้งค่าการเชื่อมต่อฐานข้อมูล
+    </span>
+    <a href="{{ url_for('login') }}" class="ms-auto btn btn-sm btn-outline-light">
+      <i class="bi bi-arrow-left me-1"></i>กลับ
+    </a>
+  </div>
+
+  <!-- Body -->
+  <div class="container-fluid p-3 flex-fill">
+    {% if alert %}
+    <div class="alert alert-{{ alert.type }} alert-dismissible fade show py-2 small" role="alert">
+      <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit">{{ alert.msg }}</pre>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="post" id="connForm">
+      <div class="row g-3">
+
+        <!-- ── Left: active selector + tabs ──────────────────────────── -->
+        <div class="col-lg-8">
+
+          <!-- Active selector -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header app-section-header fw-bold">
+              <i class="bi bi-database-fill me-2"></i>ฐานข้อมูลที่ใช้งาน
+            </div>
+            <div class="card-body py-2">
+              <div class="d-flex gap-4 align-items-center">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="active"
+                         id="active_mysql" value="mysql"
+                         {{ 'checked' if cfg.active == 'mysql' }}
+                         onchange="switchTab('mysql')">
+                  <label class="form-check-label fw-bold text-mysql" for="active_mysql">
+                    <i class="bi bi-database me-1"></i>MySQL / MariaDB
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="active"
+                         id="active_pg" value="postgresql"
+                         {{ 'checked' if cfg.active == 'postgresql' }}
+                         onchange="switchTab('postgresql')">
+                  <label class="form-check-label fw-bold text-pg" for="active_pg">
+                    <i class="bi bi-database me-1"></i>PostgreSQL
+                  </label>
+                </div>
+                <small class="text-muted ms-2" id="activeDesc"></small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-header p-0 border-0">
+              <ul class="nav nav-tabs" id="dbTabs">
+                <li class="nav-item">
+                  <button class="nav-link fw-semibold text-mysql" id="tab-mysql"
+                          type="button" onclick="switchTab('mysql')">
+                    <i class="bi bi-database me-1"></i>MySQL / MariaDB
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link fw-semibold text-pg" id="tab-pg"
+                          type="button" onclick="switchTab('postgresql')">
+                    <i class="bi bi-database me-1"></i>PostgreSQL
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div class="card-body">
+
+              <!-- MySQL fields -->
+              <div id="pane-mysql">
+                {{ db_fields('mysql', cfg.mysql) }}
+              </div>
+              <!-- PostgreSQL fields -->
+              <div id="pane-pg" style="display:none">
+                {{ db_fields('pg', cfg.postgresql) }}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Right: action buttons ──────────────────────────────────── -->
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header app-section-header fw-bold">
+              <i class="bi bi-sliders me-2"></i>การดำเนินการ
+            </div>
+            <div class="card-body d-flex flex-column gap-2 pt-3">
+              <button type="submit" name="action" value="test"
+                      class="btn btn-medium-blue w-100">
+                <i class="bi bi-plug-fill me-2"></i>ทดสอบการเชื่อมต่อ
+              </button>
+              <button type="submit" name="action" value="save"
+                      class="btn btn-medium-blue w-100">
+                <i class="bi bi-floppy-fill me-2"></i>บันทึกการตั้งค่า
+              </button>
+              <button type="submit" name="action" value="open_main"
+                      class="btn btn-purple w-100">
+                <i class="bi bi-house-fill me-2"></i>เปิดหน้าหลัก
+              </button>
+              <hr class="my-1">
+              <button type="submit" name="action" value="save_back"
+                      class="btn btn-success w-100">
+                <i class="bi bi-check-circle-fill me-2"></i>บันทึกและกลับ Login
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Macro for DB form fields ── #}
+{% macro db_fields(prefix, vals) %}
+<div class="row g-2">
+  <div class="col-md-8">
+    <label class="form-label fw-semibold small">IP Server</label>
+    <input type="text" name="{{ prefix }}_host" class="form-control form-control-sm"
+           value="{{ vals.host }}" placeholder="เช่น 192.168.1.10">
+  </div>
+  <div class="col-md-4">
+    <label class="form-label fw-semibold small">Port</label>
+    <input type="number" name="{{ prefix }}_port" class="form-control form-control-sm"
+           value="{{ vals.port }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label fw-semibold small">Database</label>
+    <input type="text" name="{{ prefix }}_database" class="form-control form-control-sm"
+           value="{{ vals.database }}" placeholder="ชื่อฐานข้อมูล">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold small">Username</label>
+    <input type="text" name="{{ prefix }}_username" class="form-control form-control-sm"
+           value="{{ vals.username }}">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold small">Password</label>
+    <div class="input-group input-group-sm">
+      <input type="password" name="{{ prefix }}_password" id="pass-{{ prefix }}"
+             class="form-control" value="{{ vals.password }}">
+      <button type="button" class="btn btn-outline-secondary"
+              onclick="togglePass('pass-{{ prefix }}',this)">
+        <i class="bi bi-eye"></i>
+      </button>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+<script>
+const ACTIVE_INIT = '{{ cfg.active }}';
+
+function switchTab(db) {
+  // panes
+  document.getElementById('pane-mysql').style.display = (db === 'mysql') ? '' : 'none';
+  document.getElementById('pane-pg').style.display    = (db === 'postgresql') ? '' : 'none';
+  // tab buttons
+  document.getElementById('tab-mysql').classList.toggle('active', db === 'mysql');
+  document.getElementById('tab-pg').classList.toggle('active',    db === 'postgresql');
+  // radio
+  document.getElementById('active_mysql').checked = (db === 'mysql');
+  document.getElementById('active_pg').checked    = (db === 'postgresql');
+  // description
+  const names = {mysql: 'MySQL / MariaDB', postgresql: 'PostgreSQL'};
+  document.getElementById('activeDesc').textContent =
+    `← ใช้ ${names[db]} สำหรับ Login และการทำงาน`;
+}
+
+function togglePass(id, btn) {
+  const el = document.getElementById(id);
+  const isPass = el.type === 'password';
+  el.type = isPass ? 'text' : 'password';
+  btn.innerHTML = isPass ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+}
+
+// Init on load
+switchTab(ACTIVE_INIT);
+</script>
+{% endblock %}

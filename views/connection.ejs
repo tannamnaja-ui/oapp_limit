@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>oapp_limit — ตั้งค่าการเชื่อมต่อ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+</head>
+<body style="background-color:var(--bg-main)">
+
+<!-- Header -->
+<div class="app-header d-flex align-items-center px-4 py-2">
+  <i class="bi bi-gear-fill me-3 fs-5 text-white"></i>
+  <span class="fw-bold text-white" style="font-size:1.1rem">ตั้งค่าการเชื่อมต่อฐานข้อมูล</span>
+  <a href="/login" class="ms-auto btn btn-outline-light py-2 px-3">
+    <i class="bi bi-arrow-left me-1"></i>กลับ
+  </a>
+</div>
+
+<div class="container-fluid p-4">
+  <% if (alert) { %>
+  <div class="alert alert-<%= alert.type %> alert-dismissible fade show py-3" role="alert">
+    <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;font-size:1rem"><%= alert.msg %></pre>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <% } %>
+
+  <form method="post">
+    <div class="row g-4">
+
+      <!-- Left: form -->
+      <div class="col-lg-8">
+
+        <!-- Active selector -->
+        <div class="card mb-4">
+          <div class="card-header app-section-header fw-bold">
+            <i class="bi bi-database-fill me-2"></i>ฐานข้อมูลที่ใช้งาน
+          </div>
+          <div class="card-body py-3">
+            <div class="d-flex gap-5 align-items-center flex-wrap">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="active"
+                       id="active_mysql" value="mysql"
+                       <%= cfg.active==='mysql' ? 'checked' : '' %>
+                       onchange="switchTab('mysql')">
+                <label class="form-check-label fw-bold text-mysql" for="active_mysql"
+                       style="font-size:1.05rem">
+                  <i class="bi bi-database me-1"></i>MySQL / MariaDB
+                </label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="active"
+                       id="active_pg" value="postgresql"
+                       <%= cfg.active==='postgresql' ? 'checked' : '' %>
+                       onchange="switchTab('postgresql')">
+                <label class="form-check-label fw-bold text-pg" for="active_pg"
+                       style="font-size:1.05rem">
+                  <i class="bi bi-database me-1"></i>PostgreSQL
+                </label>
+              </div>
+            </div>
+            <div class="mt-2" id="activeDesc" style="font-size:0.95rem;color:var(--text-muted)"></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card">
+          <div class="card-header p-0 border-0" style="background:transparent">
+            <ul class="nav nav-tabs px-3 pt-2">
+              <li class="nav-item">
+                <button class="nav-link fw-semibold text-mysql" id="tab-mysql"
+                        type="button" onclick="switchTab('mysql')">
+                  <i class="bi bi-database me-1"></i>MySQL / MariaDB
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link fw-semibold text-pg" id="tab-pg"
+                        type="button" onclick="switchTab('postgresql')">
+                  <i class="bi bi-database me-1"></i>PostgreSQL
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="card-body pt-3">
+            <div id="pane-mysql">  <%- dbFields('mysql', cfg.mysql) %></div>
+            <div id="pane-pg" style="display:none"><%- dbFields('pg', cfg.postgresql) %></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: buttons -->
+      <div class="col-lg-4">
+        <div class="card h-100">
+          <div class="card-header app-section-header fw-bold">
+            <i class="bi bi-sliders me-2"></i>การดำเนินการ
+          </div>
+          <div class="card-body d-flex flex-column gap-3 pt-4">
+            <button type="submit" name="action" value="test"
+                    class="btn btn-medium-blue w-100 py-3">
+              <i class="bi bi-plug-fill me-2 fs-5"></i>ทดสอบการเชื่อมต่อ
+            </button>
+            <button type="submit" name="action" value="save"
+                    class="btn btn-medium-blue w-100 py-3">
+              <i class="bi bi-floppy-fill me-2 fs-5"></i>บันทึกการตั้งค่า
+            </button>
+            <button type="submit" name="action" value="open_main"
+                    class="btn btn-purple w-100 py-3">
+              <i class="bi bi-house-fill me-2 fs-5"></i>เปิดหน้าหลัก
+            </button>
+            <hr style="border-color:var(--border)">
+            <button type="submit" name="action" value="save_back"
+                    class="btn btn-success w-100 py-3">
+              <i class="bi bi-check-circle-fill me-2 fs-5"></i>บันทึกและกลับ Login
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<%
+function dbFields(prefix, vals) {
+  vals = vals || {};
+  return `
+  <div class="row g-3">
+    <div class="col-md-8">
+      <label class="form-label">IP Server / Hostname</label>
+      <input type="text" name="${prefix}_host" class="form-control"
+             value="${vals.host||''}" placeholder="เช่น 192.168.1.10 หรือ localhost">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Port</label>
+      <input type="number" name="${prefix}_port" class="form-control"
+             value="${vals.port||''}">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Database</label>
+      <input type="text" name="${prefix}_database" class="form-control"
+             value="${vals.database||''}" placeholder="ชื่อฐานข้อมูล">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Username</label>
+      <input type="text" name="${prefix}_username" class="form-control"
+             value="${vals.username||''}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Password</label>
+      <div class="input-group">
+        <input type="password" name="${prefix}_password" id="pass-${prefix}"
+               class="form-control" value="${vals.password||''}">
+        <button type="button" class="btn btn-outline-secondary"
+                onclick="togglePass('pass-${prefix}',this)" style="min-height:40px">
+          <i class="bi bi-eye fs-5"></i>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+%>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const ACTIVE_INIT = '<%= cfg.active %>';
+function switchTab(db) {
+  document.getElementById('pane-mysql').style.display = db==='mysql' ? '' : 'none';
+  document.getElementById('pane-pg').style.display    = db==='postgresql' ? '' : 'none';
+  document.getElementById('tab-mysql').classList.toggle('active', db==='mysql');
+  document.getElementById('tab-pg').classList.toggle('active',    db==='postgresql');
+  document.getElementById('active_mysql').checked = db==='mysql';
+  document.getElementById('active_pg').checked    = db==='postgresql';
+  const names = {mysql:'MySQL / MariaDB', postgresql:'PostgreSQL'};
+  document.getElementById('activeDesc').textContent =
+    `✔  ใช้ ${names[db]} เป็นฐานข้อมูลหลักสำหรับ Login และการทำงานทั้งหมด`;
+}
+function togglePass(id, btn) {
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.innerHTML = show ? '<i class="bi bi-eye-slash fs-5"></i>' : '<i class="bi bi-eye fs-5"></i>';
+}
+switchTab(ACTIVE_INIT);
+</script>
+</body></html>

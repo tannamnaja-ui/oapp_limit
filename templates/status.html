@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-center min-vh-100 bg-light-blue">
+  <div class="card border-0 shadow-lg text-center" style="max-width:420px;width:100%">
+    <div class="card-body p-5">
+      <div class="status-icon mx-auto mb-3">
+        <i class="bi bi-check-circle-fill text-success" style="font-size:3.5rem"></i>
+      </div>
+      <h4 class="fw-bold text-dark-blue mb-3">บันทึกข้อมูลสำเร็จ!</h4>
+      <pre class="text-start bg-light rounded p-3 small mb-4"
+           style="white-space:pre-wrap;font-family:inherit">{{ text }}</pre>
+      <p class="text-muted small mb-3" id="countdown">กำลังกลับหน้าเข้าสู่ระบบใน 3 วินาที...</p>
+      <a href="/login" class="btn btn-medium-blue">
+        <i class="bi bi-box-arrow-in-right me-1"></i>กลับหน้าเข้าสู่ระบบ
+      </a>
+    </div>
+  </div>
+</div>
+<script>
+let s = 3;
+const cd = document.getElementById('countdown');
+const t = setInterval(() => {
+  s--;
+  if (s <= 0) { clearInterval(t); window.location.href = '/login'; }
+  else cd.textContent = `กำลังกลับหน้าเข้าสู่ระบบใน ${s} วินาที...`;
+}, 1000);
+</script>
+{% endblock %}

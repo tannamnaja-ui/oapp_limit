@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-column" style="height:100vh;overflow:hidden">
+
+  <!-- Top nav -->
+  <div class="app-header d-flex align-items-center px-3 py-2 flex-shrink-0">
+    <span class="fw-bold text-white">
+      <i class="bi bi-hospital me-2"></i>ระบบจำกัดนัดคลินิก
+    </span>
+    <span class="ms-3 badge bg-light text-dark-blue small">
+      <i class="bi bi-person-circle me-1"></i>{{ user }}
+    </span>
+    <div class="ms-auto d-flex gap-2">
+      <a href="/connection" class="btn btn-sm btn-medium-blue">
+        <i class="bi bi-gear me-1"></i>ตั้งค่าการเชื่อมต่อ
+      </a>
+      <a href="/logout" class="btn btn-sm btn-danger">
+        <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
+      </a>
+    </div>
+  </div>
+
+  {% if db_error %}
+  <div class="alert alert-warning mb-0 rounded-0 py-1 small text-center">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    ไม่สามารถโหลดข้อมูลจากฐานข้อมูลได้: {{ db_error }}
+  </div>
+  {% endif %}
+
+  <!-- Main split pane -->
+  <div class="d-flex flex-fill overflow-hidden">
+
+    <!-- ── Left pane: record list ─────────────────────────────────────── -->
+    <div class="d-flex flex-column bg-panel border-end" style="width:620px;min-width:420px">
+
+      <!-- Filter bar -->
+      <div class="px-2 py-2 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
+        <small class="fw-bold text-muted">
+          <i class="bi bi-funnel me-1"></i>กรองข้อมูล:
+        </small>
+        <small class="text-muted">วันที่เริ่ม</small>
+        <input type="date" id="filterStart" class="form-control form-control-sm" style="width:140px">
+        <small class="text-muted">ถึง</small>
+        <input type="date" id="filterEnd"   class="form-control form-control-sm" style="width:140px">
+        <small class="text-muted">คลินิก</small>
+        <select id="filterClinic" class="form-select form-select-sm" style="width:180px">
+          <option value="">-- ทุกคลินิก --</option>
+          {% for code, name in clinics %}
+          <option value="{{ code }}">{{ code }} — {{ name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="refreshList()">
+          <i class="bi bi-search me-1"></i>ค้นหา
+        </button>
+      </div>
+
+      <!-- List toolbar -->
+      <div class="list-toolbar d-flex align-items-center gap-1 px-2 py-1 border-bottom">
+        <button class="btn btn-xs btn-toolbar" title="หน้าแรก" onclick="listNav('first')">|◄</button>
+        <button class="btn btn-xs btn-toolbar" title="ก่อนหน้า" onclick="listNav('prev')">◄</button>
+        <button class="btn btn-xs btn-toolbar" title="ถัดไป"    onclick="listNav('next')">►</button>
+        <button class="btn btn-xs btn-toolbar" title="หน้าสุดท้าย" onclick="listNav('last')">►|</button>
+        <span class="border-start mx-1" style="height:20px"></span>
+        <button class="btn btn-xs btn-toolbar" title="ลบ" onclick="deleteSelected()">
+          <i class="bi bi-trash"></i>
+        </button>
+        <span class="ms-auto small text-muted" id="listCount">0 รายการ</span>
+      </div>
+
+      <!-- Table -->
+      <div class="flex-fill overflow-auto">
+        <table class="table table-sm table-hover mb-0 app-table" id="recordTable">
+          <thead>
+            <tr>
+              <th class="text-center" style="width:35px">#</th>
+              <th style="width:95px">วันที่</th>
+              <th class="text-center" style="width:60px">คลินิก</th>
+              <th class="text-center" style="width:55px">จำกัด</th>
+              <th style="width:75px">เริ่ม</th>
+              <th style="width:75px">สิ้นสุด</th>
+              <th class="text-center" style="width:50px">check</th>
+              <th>หมายเหตุ</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr id="noDataRow">
+              <td colspan="8" class="text-center text-muted py-4">
+                &lt;No data to display&gt;
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Right pane: form ───────────────────────────────────────────── -->
+    <div class="d-flex flex-column flex-fill overflow-hidden">
+
+      <!-- Right panel header -->
+      <div class="right-panel-header d-flex align-items-center px-3 py-2 flex-shrink-0">
+        <span class="fw-bold text-white">
+          <i class="bi bi-calendar-range me-2"></i>กำหนดการจำกัดนัดตามช่วงเวลา
+        </span>
+        <button class="ms-auto btn btn-sm btn-success fw-bold"
+                onclick="createRecords()">
+          <i class="bi bi-play-fill me-1"></i>สร้างรายการ
+        </button>
+      </div>
+
+      <!-- Scrollable form area -->
+      <div class="flex-fill overflow-auto p-3 bg-panel">
+
+        <!-- Alert -->
+        <div id="formAlert" class="alert alert-dismissible fade d-none py-2 small" role="alert">
+          <span id="formAlertMsg"></span>
+          <button type="button" class="btn-close" onclick="hideAlert()"></button>
+        </div>
+
+        <!-- ข้อมูลการจำกัด -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header app-section-header fw-bold py-2">
+            <i class="bi bi-info-circle me-1"></i>ข้อมูลการจำกัด
+          </div>
+          <div class="card-body pb-2">
+
+            <!-- Reference field -->
+            <div class="mb-2">
+              <input type="text" id="refField" class="form-control form-control-sm"
+                     placeholder="รหัสอ้างอิง / หมายเลข">
+            </div>
+
+            <!-- คลินิก -->
+            <div class="row g-2 align-items-center mb-2">
+              <label class="col-sm-3 col-form-label col-form-label-sm fw-semibold text-end">คลินิก</label>
+              <div class="col-sm-9">
+                <select id="clinicSel" class="form-select form-select-sm">
+                  <option value="">-- เลือกคลินิก --</option>
+                  {% for code, name in clinics %}
+                  <option value="{{ code }}">{{ code }} — {{ name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- วันที่ -->
+            <div class="row g-2 align-items-center mb-2">
+              <label class="col-sm-3 col-form-label col-form-label-sm fw-semibold text-end">วันที่เริ่มต้น</label>
+              <div class="col-sm-4">
+                <input type="date" id="startDate" class="form-control form-control-sm">
+              </div>
+              <label class="col-sm-1 col-form-label col-form-label-sm text-center">ถึง</label>
+              <div class="col-sm-4">
+                <input type="date" id="endDate" class="form-control form-control-sm">
+              </div>
+            </div>
+
+            <!-- สัปดาห์ที่ + ไม่สร้าง slot วันหยุด -->
+            <div class="row g-2 align-items-center mb-2">
+              <label class="col-sm-3 col-form-label col-form-label-sm fw-semibold text-end">สัปดาห์ที่</label>
+              <div class="col-sm-4">
+                <select id="weekSel" class="form-select form-select-sm">
+                  <option value="">None selected</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
+              </div>
+              <div class="col-sm-5">
+                <div class="form-check form-check-sm ms-2">
+                  <input class="form-check-input" type="checkbox" id="noHoliday">
+                  <label class="form-check-label small" for="noHoliday">ไม่สร้าง Slot วันหยุด</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- วัน checkboxes -->
+            <div class="row g-2 align-items-start mb-2">
+              <label class="col-sm-3 col-form-label col-form-label-sm fw-semibold text-end">วัน</label>
+              <div class="col-sm-9">
+                <div class="day-grid border rounded p-2 bg-light">
+                  <div class="row g-1">
+                    {% set days = [
+                      ('mon','จันทร์',true),('tue','อังคาร',true),
+                      ('wed','พุธ',true),('thu','พฤหัสบดี',true),
+                      ('fri','ศุกร์',true),('sat','เสาร์',false),
+                      ('sun','อาทิตย์',false)
+                    ] %}
+                    {% for key, label, default in days %}
+                    <div class="col-6">
+                      <div class="form-check form-check-sm">
+                        <input class="form-check-input day-check" type="checkbox"
+                               id="day_{{ key }}" value="{{ key }}"
+                               {{ 'checked' if default }}>
+                        <label class="form-check-label small" for="day_{{ key }}">{{ label }}</label>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- จำนวนจำกัด -->
+            <div class="row g-2 align-items-center mb-2">
+              <label class="col-sm-3 col-form-label col-form-label-sm fw-semibold text-end">จำนวนจำกัด</label>
+              <div class="col-sm-4">
+                <input type="number" id="limitCount" class="form-control form-control-sm"
+                       min="0" placeholder="0">
+              </div>
+              <div class="col-sm-5">
+                <small class="text-muted">ราย / slot</small>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- หมายเหตุ -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header app-section-header fw-bold py-2">
+            <i class="bi bi-chat-text me-1"></i>หมายเหตุ
+          </div>
+          <div class="card-body py-2">
+            <textarea id="noteText" class="form-control form-control-sm" rows="3"
+                      placeholder="หมายเหตุเพิ่มเติม..."></textarea>
+          </div>
+        </div>
+
+        <!-- Slot detail table -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-header app-section-header fw-bold py-2">
+            <i class="bi bi-clock-history me-1"></i>รายการ Slot
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0 app-table" id="slotTable">
+              <thead>
+                <tr>
+                  <th>ช่วงเวลา</th>
+                  <th class="text-center">จำนวนจำกัด</th>
+                  <th>หมายเหตุ</th>
+                </tr>
+              </thead>
+              <tbody id="slotBody">
+                <tr>
+                  <td colspan="3" class="text-center text-muted py-3">
+                    &lt;No data to display&gt;
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /form area -->
+
+      <!-- Right toolbar -->
+      <div class="list-toolbar d-flex align-items-center gap-1 px-2 py-1 border-top flex-shrink-0">
+        <button class="btn btn-xs btn-toolbar" title="ใหม่" onclick="clearForm()">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button class="btn btn-xs btn-toolbar" title="บันทึก" onclick="saveData()">
+          <i class="bi bi-floppy"></i>
+        </button>
+      </div>
+    </div><!-- /right pane -->
+
+  </div><!-- /split -->
+</div>
+
+<script>
+// ── Row selection ──────────────────────────────────────────────────────────────
+let selectedRow = null;
+function selectRow(tr) {
+  if (selectedRow) selectedRow.classList.remove('table-active');
+  selectedRow = tr;
+  tr.classList.add('table-active');
+}
+
+// ── Load / refresh record list ─────────────────────────────────────────────────
+async function loadRecords(start, end, clinic) {
+  const params = new URLSearchParams({ start, end });
+  if (clinic) params.append('clinic', clinic);
+  try {
+    const res  = await fetch('/api/records?' + params.toString());
+    const data = await res.json();
+    if (!data.ok) { showAlert('danger', data.msg); return; }
+    const tbody = document.getElementById('recordBody');
+    selectedRow = null;
+    if (!data.records.length) {
+      tbody.innerHTML = '<tr id="noDataRow"><td colspan="8" class="text-center text-muted py-4">&lt;No data to display&gt;</td></tr>';
+    } else {
+      tbody.innerHTML = data.records.map(r =>
+        `<tr data-id="${r.no}" onclick="selectRow(this)" class="cursor-pointer">
+           <td class="text-center">${r.no}</td>
+           <td>${r.date}</td>
+           <td class="text-center">${r.clinic}</td>
+           <td class="text-center">${r.limit}</td>
+           <td>${r.start_time}</td>
+           <td>${r.end_time}</td>
+           <td class="text-center">${r.check_time}</td>
+           <td>${r.note}</td>
+         </tr>`
+      ).join('');
+    }
+    document.getElementById('listCount').textContent = data.records.length + ' รายการ';
+  } catch (e) {
+    showAlert('danger', 'โหลดข้อมูลไม่สำเร็จ: ' + e.message);
+  }
+}
+
+function refreshList() {
+  const start  = document.getElementById('filterStart').value;
+  const end    = document.getElementById('filterEnd').value;
+  const clinic = document.getElementById('filterClinic').value;
+  if (!start || !end) { showAlert('warning', 'กรุณาระบุวันที่เริ่มต้นและสิ้นสุด'); return; }
+  if (end < start)    { showAlert('warning', 'วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่มต้น'); return; }
+  loadRecords(start, end, clinic);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('filterStart').addEventListener('change', () => {
+    if (document.getElementById('filterStart').value &&
+        document.getElementById('filterEnd').value) refreshList();
+  });
+  document.getElementById('filterEnd').addEventListener('change', () => {
+    if (document.getElementById('filterStart').value &&
+        document.getElementById('filterEnd').value) refreshList();
+  });
+});
+
+// ── List navigation ────────────────────────────────────────────────────────────
+function listNav(dir) {
+  const rows = [...document.querySelectorAll('#recordBody tr[data-id]')];
+  if (!rows.length) return;
+  if (!selectedRow) { selectRow(rows[0]); return; }
+  const idx = rows.indexOf(selectedRow);
+  if (dir === 'first') selectRow(rows[0]);
+  else if (dir === 'last')  selectRow(rows[rows.length - 1]);
+  else if (dir === 'prev')  selectRow(rows[Math.max(0, idx - 1)]);
+  else if (dir === 'next')  selectRow(rows[Math.min(rows.length - 1, idx + 1)]);
+}
+
+function deleteSelected() {
+  if (!selectedRow) { showAlert('warning', 'กรุณาเลือกรายการที่ต้องการลบก่อน'); return; }
+  if (!confirm('ต้องการลบรายการที่เลือกหรือไม่?')) return;
+  selectedRow.remove();
+  selectedRow = null;
+  updateCount();
+}
+
+function updateCount() {
+  const n = document.querySelectorAll('#recordBody tr[data-id]').length;
+  document.getElementById('listCount').textContent = n + ' รายการ';
+}
+
+// ── Form actions ───────────────────────────────────────────────────────────────
+function clearForm() {
+  document.getElementById('refField').value = '';
+  document.getElementById('clinicSel').value = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  document.getElementById('weekSel').value = '';
+  document.getElementById('noHoliday').checked = false;
+  document.getElementById('limitCount').value = '';
+  document.getElementById('noteText').value = '';
+  document.querySelectorAll('.day-check').forEach(cb => {
+    cb.checked = ['mon','tue','wed','thu','fri'].includes(cb.value);
+  });
+  clearSlots();
+}
+
+function clearSlots() {
+  document.getElementById('slotBody').innerHTML =
+    '<tr><td colspan="3" class="text-center text-muted py-3">&lt;No data to display&gt;</td></tr>';
+}
+
+async function createRecords() {
+  const clinic = document.getElementById('clinicSel').value;
+  const start  = document.getElementById('startDate').value;
+  const end    = document.getElementById('endDate').value;
+  const days   = [...document.querySelectorAll('.day-check:checked')].map(c => c.value);
+
+  if (!clinic)       { showAlert('warning', 'กรุณาเลือกคลินิก'); return; }
+  if (!start || !end){ showAlert('warning', 'กรุณาระบุวันที่เริ่มต้นและสิ้นสุด'); return; }
+  if (!days.length)  { showAlert('warning', 'กรุณาเลือกอย่างน้อย 1 วัน'); return; }
+
+  const res = await fetch('/api/create-records', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ clinic, start, end, days,
+      week:    document.getElementById('weekSel').value,
+      limit:   document.getElementById('limitCount').value,
+      note:    document.getElementById('noteText').value,
+      noHoliday: document.getElementById('noHoliday').checked })
+  });
+  const data = await res.json();
+  showAlert(data.ok ? 'success' : 'danger', data.msg);
+  if (data.ok) {
+    const clinicCode = clinic.split(' ')[0];
+    document.getElementById('filterStart').value  = start;
+    document.getElementById('filterEnd').value    = end;
+    document.getElementById('filterClinic').value = clinicCode;
+    loadRecords(start, end, clinicCode);
+  }
+}
+
+function saveData() {
+  showAlert('success', 'บันทึกข้อมูลเรียบร้อยแล้ว');
+}
+
+// ── Alert helper ───────────────────────────────────────────────────────────────
+function showAlert(type, msg) {
+  const el = document.getElementById('formAlert');
+  el.className = `alert alert-${type} alert-dismissible fade show py-2 small`;
+  document.getElementById('formAlertMsg').textContent = msg;
+}
+function hideAlert() {
+  document.getElementById('formAlert').classList.add('d-none');
+}
+</script>
+{% endblock %}

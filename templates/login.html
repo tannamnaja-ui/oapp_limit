@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-bg d-flex align-items-center justify-content-center min-vh-100">
+  <div class="login-blob login-blob-1"></div>
+  <div class="login-blob login-blob-2"></div>
+  <div class="login-blob login-blob-3"></div>
+
+  <div class="login-card">
+    <div class="login-header text-center">
+      <div class="login-logo-wrap mb-3">
+        <i class="bi bi-hospital-fill"></i>
+      </div>
+      <h4 class="mb-1 fw-bold">ระบบจำกัดนัดคลินิก</h4>
+      <p class="mb-0">Clinic Appointment Limit System</p>
+    </div>
+
+    <div class="login-body">
+      {% if error %}
+      <div class="alert alert-danger py-2" style="font-size:0.92rem">
+        <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label">ชื่อผู้ใช้</label>
+          <div class="input-group login-input-group">
+            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+            <input type="text" name="username" class="form-control"
+                   placeholder="กรอกชื่อผู้ใช้" autofocus required>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">รหัสผ่าน</label>
+          <div class="input-group login-input-group">
+            <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+            <input type="password" name="password" id="pwd"
+                   class="form-control" placeholder="กรอกรหัสผ่าน" required>
+            <button type="button" class="btn login-eye-btn" onclick="togglePwd()">
+              <i class="bi bi-eye" id="pwd-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn login-submit-btn w-100">
+          <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ
+        </button>
+      </form>
+
+      <div class="login-divider"><span>หรือ</span></div>
+      <a href="/connection" class="btn login-settings-btn w-100">
+        <i class="bi bi-gear me-2"></i>ตั้งค่าการเชื่อมต่อฐานข้อมูล
+      </a>
+    </div>
+
+    <div class="login-footer text-center">oapp_limit v1.0</div>
+  </div>
+</div>
+
+<script>
+function togglePwd() {
+  const p = document.getElementById('pwd');
+  const e = document.getElementById('pwd-eye');
+  if (p.type === 'password') { p.type = 'text';     e.className = 'bi bi-eye-slash'; }
+  else                        { p.type = 'password'; e.className = 'bi bi-eye'; }
+}
+</script>
+{% endblock %}

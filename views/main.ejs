@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>oapp_limit — ข้อมูลการจำกัดนัด</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <style>
+    /* layout helpers */
+    body   { background-color:#B8D9EF!important; font-family:'Sarabun','Tahoma',sans-serif; }
+    .split-left  { width:58%; min-width:380px; background-color:#C5DFEF; border-right:2px solid #93C6E0; }
+    .split-right { width:42%; background-color:#C5DFEF; }
+    .filter-bar  { background-color:#1A5276; border-bottom:3px solid #0E3858; }
+    .filter-bar label, .filter-bar span { color:#fff!important; }
+    .filter-bar .form-control, .filter-bar .form-select {
+      font-size:1rem!important; min-height:38px!important;
+      border:1.5px solid #5DADE2; background:#EAF4FB;
+    }
+    /* table overrides */
+    #recordTable thead th { background-color:#2471A3!important; color:#fff!important; font-size:0.9rem; padding:8px 10px; white-space:nowrap; }
+    #recordTable tbody td { font-size:0.9rem; padding:7px 10px; color:#17202A; border-color:#C2DDEE; vertical-align:middle; }
+    #recordTable tbody tr:nth-child(even) td { background-color:#DCF0FA; }
+    #recordTable tbody tr:hover td  { background-color:#B8DDEF!important; cursor:pointer; }
+    #recordTable tbody tr.row-sel td { background-color:#7EC8E3!important; font-weight:600; }
+    /* count badge */
+    .rec-count { background:#2471A3; color:#fff; border-radius:20px; padding:2px 12px; font-size:0.9rem; font-weight:600; }
+  </style>
+</head>
+<body>
+<div class="d-flex flex-column" style="height:100vh;overflow:hidden">
+
+  <%/* ── Navbar ──────────────────────────────────────────────────────── */%>
+  <div class="app-header d-flex align-items-center px-4 flex-shrink-0" style="min-height:52px">
+    <i class="bi bi-hospital me-2 fs-5 text-white"></i>
+    <span class="fw-bold text-white" style="font-size:1.1rem">ระบบจำกัดนัดคลินิก</span>
+    <span class="ms-3 badge bg-light text-dark-blue">
+      <i class="bi bi-person-circle me-1"></i><%= user %>
+    </span>
+    <div class="ms-auto d-flex gap-2">
+      <a href="/connection" class="btn btn-medium-blue py-2">
+        <i class="bi bi-gear me-1"></i>ตั้งค่าการเชื่อมต่อ
+      </a>
+      <a href="/logout" class="btn btn-danger py-2">
+        <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
+      </a>
+    </div>
+  </div>
+
+  <%/* ── DB error banner ──────────────────────────────────────────────── */%>
+  <% if (dbError) { %>
+  <div class="alert alert-warning mb-0 rounded-0 py-2 text-center" style="font-size:0.95rem">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    DB Error: <%= dbError %>
+    — <a href="/connection" class="fw-bold">ตั้งค่าการเชื่อมต่อ</a>
+  </div>
+  <% } %>
+
+  <%/* ── Filter bar ───────────────────────────────────────────────────── */%>
+  <div class="filter-bar d-flex align-items-center flex-wrap gap-3 px-4 py-2 flex-shrink-0">
+    <span class="fw-bold" style="font-size:1.05rem;white-space:nowrap">
+      <i class="bi bi-funnel-fill me-1"></i>กรองข้อมูล :
+    </span>
+
+    <div class="d-flex align-items-center gap-2">
+      <label class="fw-bold" style="font-size:1rem;white-space:nowrap">วันที่เริ่ม</label>
+      <div style="width:155px"><input type="date" id="fDateFrom" class="form-control w-100"></div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <label class="fw-bold" style="font-size:1rem;white-space:nowrap">ถึง</label>
+      <div style="width:155px"><input type="date" id="fDateTo" class="form-control w-100"></div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <label class="fw-bold" style="font-size:1rem;white-space:nowrap">คลินิก</label>
+      <select id="fClinic" class="form-select" style="width:210px">
+        <option value="">— ทั้งหมด —</option>
+        <% clinics.forEach(function(c){ %>
+        <option value="<%= c.clinic||c[0] %>"><%= c.clinic||c[0] %> — <%= c.name||c[1] %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <button class="btn btn-warning fw-bold px-3" style="font-size:1rem;min-height:38px;color:#1A3A5C"
+            onclick="filterRecords()">
+      <i class="bi bi-search me-1"></i>ค้นหา
+    </button>
+    <button class="btn btn-light fw-semibold px-3" style="font-size:1rem;min-height:38px;color:#1A3A5C"
+            onclick="clearFilter()">
+      <i class="bi bi-x-circle me-1"></i>ล้าง
+    </button>
+
+    <span class="ms-auto rec-count" id="recCount"
+          style="font-size:1rem;padding:4px 16px"><%= records.length %> รายการ</span>
+  </div>
+
+  <%/* ── Main split pane ──────────────────────────────────────────────── */%>
+  <div class="d-flex flex-fill overflow-hidden">
+
+    <%/* ── Left: data table ──────────────────────────────────────────── */%>
+    <div class="split-left d-flex flex-column">
+
+      <!-- Table toolbar -->
+      <div class="list-toolbar d-flex align-items-center gap-1 px-2 border-bottom flex-wrap" style="background-color:#A0C8E0">
+        <button class="btn btn-xs btn-toolbar-nav" onclick="listNav('first')" title="หน้าแรก">|◄</button>
+        <button class="btn btn-xs btn-toolbar-nav" onclick="listNav('prev')"  title="ก่อนหน้า">◄</button>
+        <button class="btn btn-xs btn-toolbar-nav" onclick="listNav('next')"  title="ถัดไป">►</button>
+        <button class="btn btn-xs btn-toolbar-nav" onclick="listNav('last')"  title="หน้าสุดท้าย">►|</button>
+        <span class="border-start mx-2" style="height:20px;border-color:#93C6E0"></span>
+        <button class="btn btn-xs" style="background:#27AE60;color:#fff;border:none;border-radius:4px;padding:3px 10px"
+                title="เพิ่มรายการใหม่" onclick="openModal()">
+          <i class="bi bi-plus-lg me-1"></i>เพิ่มรายการ
+        </button>
+      </div>
+
+      <!-- Bulk action bar (hidden until rows selected) -->
+      <div id="bulkBar" class="d-none d-flex align-items-center gap-2 px-3 py-2 flex-shrink-0"
+           style="background:#FFF8E1;border-bottom:2px solid #F9CA24;font-size:0.93rem">
+        <div class="form-check mb-0 d-flex align-items-center gap-2" style="cursor:pointer"
+             onclick="toggleMasterCheck()">
+          <input type="checkbox" id="masterCheck" class="form-check-input"
+                 style="width:1.2em;height:1.2em;cursor:pointer" onclick="event.stopPropagation();toggleMasterCheck()">
+          <label class="form-check-label fw-semibold" style="cursor:pointer;color:#1A4F72;white-space:nowrap">
+            เลือก / ล้างทั้งหมด
+          </label>
+        </div>
+        <span class="border-start mx-1" style="height:20px;border-color:#F0C040"></span>
+        <span class="fw-semibold" id="bulkCount" style="color:#7D4E00;white-space:nowrap">0 รายการที่เลือก</span>
+        <button id="btnBulkEdit" class="btn btn-sm fw-semibold ms-2" disabled
+                style="background:#E67E22;color:#fff;border:none;border-radius:6px;opacity:0.45"
+                onclick="openBulkEditModal()">
+          <i class="bi bi-pencil-fill me-1"></i>แก้ไขที่เลือก
+        </button>
+        <button id="btnBulkDel" class="btn btn-sm btn-danger fw-semibold" disabled
+                style="border-radius:6px;opacity:0.45"
+                onclick="bulkDelete()">
+          <i class="bi bi-trash3-fill me-1"></i>ลบที่เลือก
+        </button>
+      </div>
+
+      <!-- Table -->
+      <div class="flex-fill overflow-auto">
+        <table class="table table-hover mb-0 w-100" id="recordTable" style="background:#F0F8FE">
+          <thead style="position:sticky;top:0;z-index:1">
+            <tr>
+              <th style="width:34px" class="text-center">
+                <input type="checkbox" id="chkAll" class="form-check-input" onclick="toggleSelectAll(this)">
+              </th>
+              <th style="width:38px" class="text-center">#</th>
+              <th style="width:98px">วันที่</th>
+              <th style="width:78px" class="text-center">วัน</th>
+              <th style="width:60px" class="text-center">คลินิก</th>
+              <th style="min-width:110px">ชื่อคลินิก</th>
+              <th style="width:60px" class="text-center">จำกัด</th>
+              <th style="width:80px">เริ่ม</th>
+              <th style="width:80px">สิ้นสุด</th>
+              <th style="width:55px" class="text-center">check</th>
+              <th>หมายเหตุ</th>
+              <th style="width:48px" class="text-center"></th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <% if (records && records.length > 0) { %>
+              <% records.forEach(function(r, i){ %>
+              <tr data-id="<%= r.oapp_limit_id||i %>"
+                  data-row="<%- JSON.stringify(r).replace(/"/g,'&quot;') %>"
+                  onclick="selectRow(this,<%- JSON.stringify(r) %>)">
+                <td class="text-center" onclick="event.stopPropagation()">
+                  <input type="checkbox" class="form-check-input row-check"
+                         data-id="<%= r.oapp_limit_id||i %>" onchange="updateBulkBar()">
+                </td>
+                <td class="text-center fw-semibold"><%= i+1 %></td>
+                <td><%= fmtDate(r.oapp_date) %></td>
+                <td class="text-center" style="color:#5D3A9B;font-weight:600"><%= thaiDay(r.oapp_date) %></td>
+                <td class="text-center fw-semibold" style="color:#1A4F72"><%= r.oapp_clinic||'' %></td>
+                <td style="font-size:0.88rem"><%= r.clinic_name||'' %></td>
+                <td class="text-center fw-bold" style="color:#1A4F72"><%= r.oapp_limit||'' %></td>
+                <td><%= fmtTime(r.start_time) %></td>
+                <td><%= fmtTime(r.end_time) %></td>
+                <td class="text-center"><%= r.check_time||'' %></td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                    title="<%= r.limit_note||'' %>"><%= r.limit_note||'' %></td>
+                <td class="text-center">
+                  <button class="btn btn-xs"
+                          style="background:#2471A3;color:#fff;border:none;border-radius:4px;padding:2px 7px"
+                          title="แก้ไขรายการนี้"
+                          onclick="event.stopPropagation();openModal(JSON.parse(this.closest('tr').dataset.row))">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                </td>
+              </tr>
+              <% }) %>
+            <% } else { %>
+            <tr id="noDataRow">
+              <td colspan="12" class="text-center py-5" style="color:#5D7080;font-size:1rem">
+                <i class="bi bi-inbox me-2"></i>&lt;No data to display&gt;
+              </td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /left -->
+
+    <%/* ── Right: create / edit form ─────────────────────────────────── */%>
+    <div class="split-right d-flex flex-column">
+
+      <!-- Right header -->
+      <div class="right-panel-header d-flex align-items-center px-4 flex-shrink-0">
+        <i class="bi bi-calendar-plus me-2 fs-5 text-white"></i>
+        <span class="fw-bold text-white" style="font-size:1rem">กำหนดการจำกัดนัดตามช่วงเวลา</span>
+        <button class="ms-auto btn btn-success py-2 px-3 fw-bold"
+                style="font-size:0.95rem" onclick="createRecords()">
+          <i class="bi bi-play-fill me-1"></i>สร้างรายการ
+        </button>
+      </div>
+
+      <!-- Form alert -->
+      <div id="formAlert" class="alert alert-dismissible fade d-none mx-3 mt-2 py-2" role="alert">
+        <span id="formAlertMsg"></span>
+        <button type="button" class="btn-close" onclick="hideAlert()"></button>
+      </div>
+
+      <!-- Scrollable form -->
+      <div class="flex-fill overflow-auto px-3 py-2">
+
+        <!-- ข้อมูลการจำกัด -->
+        <div class="card mb-3">
+          <div class="card-header app-section-header">
+            <i class="bi bi-info-circle me-2"></i>ข้อมูลการจำกัด
+          </div>
+          <div class="card-body">
+
+            <!-- คลินิก -->
+            <div class="row align-items-center mb-3">
+              <label class="col-sm-4 col-form-label fw-semibold">คลินิก</label>
+              <div class="col-sm-8">
+                <select id="clinicSel" class="form-select">
+                  <option value="">-- เลือกคลินิก --</option>
+                  <% clinics.forEach(function(c){ %>
+                  <option value="<%= c.clinic||c[0] %>">
+                    <%= c.clinic||c[0] %> — <%= c.name||c[1] %>
+                  </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+
+            <!-- วันที่ -->
+            <div class="row align-items-center mb-3">
+              <label class="col-sm-4 col-form-label fw-semibold">วันที่เริ่มต้น</label>
+              <div class="col-sm-4">
+                <input type="date" id="startDate" class="form-control">
+              </div>
+              <label class="col-sm-1 col-form-label fw-semibold text-center">ถึง</label>
+              <div class="col-sm-3">
+                <input type="date" id="endDate" class="form-control">
+              </div>
+            </div>
+
+            <!-- สัปดาห์ที่ + วันหยุด -->
+            <div class="row align-items-center mb-3">
+              <label class="col-sm-4 col-form-label fw-semibold">สัปดาห์ที่</label>
+              <div class="col-sm-4">
+                <select id="weekSel" class="form-select">
+                  <option value="">None selected</option>
+                  <% [1,2,3,4,5].forEach(n=>{ %><option><%= n %></option><% }) %>
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <div class="form-check ms-1">
+                  <input class="form-check-input" type="checkbox" id="noHoliday">
+                  <label class="form-check-label" for="noHoliday">ไม่สร้าง Slot วันหยุด</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- วัน -->
+            <div class="row align-items-start mb-3">
+              <label class="col-sm-4 col-form-label fw-semibold pt-2">วัน</label>
+              <div class="col-sm-8">
+                <div class="day-grid">
+                  <!-- toggle all / clear -->
+                  <div class="mb-2">
+                    <button type="button" id="toggleDaysBtn"
+                            class="btn btn-sm"
+                            style="font-size:0.85rem;border:1px solid #27AE60;color:#27AE60;padding:2px 12px;border-radius:20px"
+                            onclick="toggleAllDays()">
+                      <i class="bi bi-check2-all me-1"></i>เลือกทั้งหมด
+                    </button>
+                  </div>
+                  <div class="row g-2">
+                    <% [['mon','จันทร์',false],['tue','อังคาร',false],
+                        ['wed','พุธ',false],['thu','พฤหัสบดี',false],
+                        ['fri','ศุกร์',false],['sat','เสาร์',false],
+                        ['sun','อาทิตย์',false]].forEach(function(d){ %>
+                    <div class="col-6">
+                      <div class="form-check">
+                        <input class="form-check-input day-check" type="checkbox"
+                               id="day_<%= d[0] %>" value="<%= d[0] %>" <%= d[2]?'checked':'' %>
+                               onchange="updateToggleDaysBtn()">
+                        <label class="form-check-label" for="day_<%= d[0] %>"><%= d[1] %></label>
+                      </div>
+                    </div>
+                    <% }) %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- เวลา -->
+            <div class="row align-items-center mb-2">
+              <label class="col-sm-4 col-form-label fw-semibold">เวลาเริ่ม</label>
+              <div class="col-sm-4">
+                <input type="text" id="startTime" class="form-control text-center fw-semibold"
+                       maxlength="8" placeholder="HH:MM:SS"
+                       style="font-size:1rem;letter-spacing:1px"
+                       oninput="autoFmtTime(this)"
+                       onblur="validateTime(this)">
+              </div>
+              <label class="col-sm-1 col-form-label fw-semibold text-center">ถึง</label>
+              <div class="col-sm-3">
+                <input type="text" id="endTime" class="form-control text-center fw-semibold"
+                       maxlength="8" placeholder="HH:MM:SS"
+                       style="font-size:1rem;letter-spacing:1px"
+                       oninput="autoFmtTime(this)"
+                       onblur="validateTime(this)">
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-sm-4"></div>
+              <div class="col-sm-8 d-flex align-items-center gap-3 flex-wrap">
+                <small style="color:#5D7080;font-size:0.85rem">
+                  รูปแบบ 24 ชม. &nbsp;ชั่วโมง:นาที:วินาที &nbsp;เช่น <strong>08:30:00</strong> หรือ <strong>13:00:00</strong>
+                </small>
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" id="checkTime">
+                  <label class="form-check-label fw-semibold" for="checkTime"
+                         style="font-size:0.95rem;color:#1A4F72">
+                    check_time = Y
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- จำนวนจำกัด -->
+            <div class="row align-items-center">
+              <label class="col-sm-4 col-form-label fw-semibold">จำนวนจำกัด <span class="text-danger">*</span></label>
+              <div class="col-sm-4">
+                <input type="number" id="limitCount" class="form-control" min="0"
+                       placeholder="0" required>
+              </div>
+              <div class="col-sm-4">
+                <span style="font-size:0.95rem;color:#5D7080">ราย / slot</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- หมายเหตุ -->
+        <div class="card mb-3">
+          <div class="card-header app-section-header">
+            <i class="bi bi-chat-text me-2"></i>หมายเหตุ
+          </div>
+          <div class="card-body">
+            <textarea id="noteText" class="form-control" rows="3"
+                      placeholder="หมายเหตุเพิ่มเติม..."></textarea>
+          </div>
+        </div>
+
+      </div><!-- /scroll -->
+
+    </div><!-- /right -->
+  </div><!-- /split -->
+<!-- ── Modal: แก้ไขหลายรายการพร้อมกัน ─────────────────────────────────── -->
+<div class="modal fade" id="bulkEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:500px">
+    <div class="modal-content" style="border:2px solid #E67E22">
+      <div class="modal-header py-2" style="background:#E67E22">
+        <i class="bi bi-pencil-square text-white me-2 fs-5"></i>
+        <span class="fw-bold text-white fs-6" id="bulkEditTitle">แก้ไขหลายรายการ</span>
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:#FFF8F0">
+        <p class="text-muted mb-3" style="font-size:0.88rem">
+          <i class="bi bi-info-circle me-1"></i>
+          ติ๊กช่องซ้ายมือเพื่อเลือกฟิลด์ที่ต้องการเปลี่ยน
+        </p>
+        <div id="bulkEditAlert" class="alert d-none py-2 mb-3" style="font-size:0.9rem"></div>
+
+        <!-- จำนวนจำกัด -->
+        <div class="row align-items-center mb-3">
+          <div class="col-auto">
+            <input type="checkbox" id="bApplyLimit" class="form-check-input" style="width:1.2em;height:1.2em">
+          </div>
+          <label class="col-sm-4 col-form-label fw-semibold">จำนวนจำกัด</label>
+          <div class="col">
+            <div class="input-group">
+              <input type="number" id="bLimit" class="form-control" min="0" placeholder="0">
+              <span class="input-group-text">ราย</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- เวลาเริ่ม–สิ้นสุด -->
+        <div class="row align-items-center mb-3">
+          <div class="col-auto">
+            <input type="checkbox" id="bApplyTime" class="form-check-input" style="width:1.2em;height:1.2em">
+          </div>
+          <label class="col-sm-4 col-form-label fw-semibold">เวลา</label>
+          <div class="col">
+            <div class="d-flex align-items-center gap-2">
+              <input type="text" id="bStartTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px">
+              <span class="fw-semibold">ถึง</span>
+              <input type="text" id="bEndTime" class="form-control text-center" maxlength="8" placeholder="HH:MM:SS" style="width:105px">
+            </div>
+            <small class="text-muted">รูปแบบ 24 ชม. เช่น 08:30:00</small>
+          </div>
+        </div>
+
+        <!-- check_time -->
+        <div class="row align-items-center mb-3">
+          <div class="col-auto">
+            <input type="checkbox" id="bApplyCheck" class="form-check-input" style="width:1.2em;height:1.2em">
+          </div>
+          <label class="col-sm-4 col-form-label fw-semibold">check_time</label>
+          <div class="col">
+            <div class="form-check">
+              <input type="checkbox" id="bCheck" class="form-check-input">
+              <label class="form-check-label" for="bCheck">check_time = Y</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- หมายเหตุ -->
+        <div class="row align-items-center mb-1">
+          <div class="col-auto">
+            <input type="checkbox" id="bApplyNote" class="form-check-input" style="width:1.2em;height:1.2em">
+          </div>
+          <label class="col-sm-4 col-form-label fw-semibold">หมายเหตุ</label>
+          <div class="col">
+            <textarea id="bNote" class="form-control" rows="2" placeholder="หมายเหตุ..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer py-2" style="background:#FFF8F0">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+        <button class="btn btn-sm fw-semibold" style="background:#E67E22;color:#fff;border:none"
+                onclick="saveBulkEdit()">
+          <i class="bi bi-check-lg me-1"></i>บันทึกการเปลี่ยนแปลง
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: เพิ่ม / แก้ไขรายการรายวัน ─────────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:520px">
+    <div class="modal-content" style="border:2px solid #2471A3">
+      <div class="modal-header" style="background:#2471A3">
+        <h5 class="modal-title text-white fw-bold" id="editModalLabel">
+          <i class="bi bi-calendar-plus me-2"></i><span id="modalTitleTxt">เพิ่มรายการ</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:#EAF4FB">
+        <input type="hidden" id="mId">
+
+        <!-- วันที่ -->
+        <div class="row align-items-center mb-3">
+          <label class="col-sm-4 col-form-label fw-semibold">วันที่ <span class="text-danger">*</span></label>
+          <div class="col-sm-8">
+            <input type="date" id="mDate" class="form-control" required>
+          </div>
+        </div>
+
+        <!-- คลินิก -->
+        <div class="row align-items-center mb-3">
+          <label class="col-sm-4 col-form-label fw-semibold">คลินิก <span class="text-danger">*</span></label>
+          <div class="col-sm-8">
+            <select id="mClinic" class="form-select" required>
+              <option value="">-- เลือกคลินิก --</option>
+              <% clinics.forEach(function(c){ %>
+              <option value="<%= c.clinic||c[0] %>"><%= c.clinic||c[0] %> — <%= c.name||c[1] %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <!-- จำนวนจำกัด -->
+        <div class="row align-items-center mb-3">
+          <label class="col-sm-4 col-form-label fw-semibold">จำนวนจำกัด <span class="text-danger">*</span></label>
+          <div class="col-sm-5">
+            <input type="number" id="mLimit" class="form-control" min="0" value="0">
+          </div>
+          <div class="col-sm-3"><small class="text-muted">ราย / slot</small></div>
+        </div>
+
+        <!-- เวลา -->
+        <div class="row align-items-center mb-3">
+          <label class="col-sm-4 col-form-label fw-semibold">เวลาเริ่ม</label>
+          <div class="col-sm-4">
+            <input type="text" id="mStartTime" class="form-control text-center fw-semibold"
+                   maxlength="8" placeholder="08:00:00" oninput="autoFmtTime(this)" onblur="validateTime(this)">
+          </div>
+          <label class="col-sm-1 col-form-label text-center fw-semibold">ถึง</label>
+          <div class="col-sm-3">
+            <input type="text" id="mEndTime" class="form-control text-center fw-semibold"
+                   maxlength="8" placeholder="12:00:00" oninput="autoFmtTime(this)" onblur="validateTime(this)">
+          </div>
+        </div>
+
+        <!-- check_time -->
+        <div class="row mb-3">
+          <div class="col-sm-4"></div>
+          <div class="col-sm-8">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="mCheck">
+              <label class="form-check-label fw-semibold" for="mCheck">check_time = Y</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- หมายเหตุ -->
+        <div class="row mb-1">
+          <label class="col-sm-4 col-form-label fw-semibold">หมายเหตุ</label>
+          <div class="col-sm-8">
+            <textarea id="mNote" class="form-control" rows="2" placeholder="หมายเหตุ..."></textarea>
+          </div>
+        </div>
+
+        <div id="modalAlert" class="alert py-2 mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer justify-content-between" style="background:#EAF4FB">
+        <button id="mDeleteBtn" type="button" class="btn btn-danger d-none" onclick="deleteFromModal()">
+          <i class="bi bi-trash me-1"></i>ลบรายการนี้
+        </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary fw-bold" onclick="saveRecord()">
+            <i class="bi bi-floppy me-1"></i>บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<%
+// Helper functions (EJS server-side)
+function thaiDay(v) {
+  if (!v) return '';
+  const [y,m,d] = String(v).substring(0,10).split('-').map(Number);
+  if (!y) return '';
+  return ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][new Date(y,m-1,d).getDay()];
+}
+function fmtDate(v) {
+  if (!v) return '';
+  try {
+    // รับ "2026-05-30" หรือ Date object
+    let d;
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+      // parse แบบ local เพื่อหลีกเลี่ยง timezone shift
+      const [y,m,day] = v.substring(0,10).split('-').map(Number);
+      d = new Date(y, m-1, day);
+    } else {
+      d = new Date(v);
+    }
+    if (isNaN(d)) return String(v);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  } catch(_) { return String(v); }
+}
+function fmtTime(v) {
+  if (!v) return '';
+  // string เช่น "08:30:00" หรือ "08:30"
+  if (typeof v === 'string') {
+    const parts = v.split(':');
+    const h = parts[0] || '00';
+    const m = parts[1] || '00';
+    const s = parts[2] || '00';
+    return `${h.padStart(2,'0')}:${m.padStart(2,'0')}:${s.padStart(2,'0')}`;
+  }
+  // Duration object (MySQL TIME type)
+  if (typeof v === 'object' && v !== null) {
+    const h = String(Math.floor(v.hours||0)).padStart(2,'0');
+    const m = String(v.minutes||0).padStart(2,'0');
+    const s = String(v.seconds||0).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+  return String(v);
+}
+%>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+// ── Day checkbox: เลือกทั้งหมด / ล้างทั้งหมด ─────────────────────────────
+function toggleAllDays() {
+  const checks = [...document.querySelectorAll('.day-check')];
+  const hasAny = checks.some(c => c.checked);
+  checks.forEach(c => c.checked = !hasAny);
+  updateToggleDaysBtn();
+}
+function updateToggleDaysBtn() {
+  const btn = document.getElementById('toggleDaysBtn');
+  if (!btn) return;
+  const hasAny = [...document.querySelectorAll('.day-check')].some(c => c.checked);
+  if (hasAny) {
+    btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>ล้างทั้งหมด';
+    btn.style.borderColor = '#C0392B';
+    btn.style.color       = '#C0392B';
+  } else {
+    btn.innerHTML = '<i class="bi bi-check2-all me-1"></i>เลือกทั้งหมด';
+    btn.style.borderColor = '#27AE60';
+    btn.style.color       = '#27AE60';
+  }
+}
+
+// ── Thai day name from YYYY-MM-DD string ─────────────────────────────────
+function thaiDayJS(v) {
+  if (!v) return '';
+  const [y,m,d] = String(v).substring(0,10).split('-').map(Number);
+  if (!y) return '';
+  return ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][new Date(y,m-1,d).getDay()];
+}
+
+// ── Time input helpers ────────────────────────────────────────────────────
+// กรองเฉพาะตัวเลข แล้วใส่ : อัตโนมัติ → "083000" → "08:30:00"
+function autoFmtTime(el) {
+  let v = el.value.replace(/[^0-9]/g, '');         // เอาเฉพาะตัวเลข
+  if (v.length > 6) v = v.substring(0, 6);
+  let out = '';
+  if (v.length >= 1) out = v.substring(0, Math.min(2, v.length));
+  if (v.length >= 3) out += ':' + v.substring(2, Math.min(4, v.length));
+  if (v.length >= 5) out += ':' + v.substring(4, 6);
+  el.value = out;
+}
+
+// ตรวจสอบรูปแบบเวลาเมื่อ blur
+function validateTime(el) {
+  const v = el.value.trim();
+  if (!v) return;                                   // ว่างก็ผ่าน
+  const ok = /^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(v);
+  if (!ok) {
+    el.style.borderColor = '#E74C3C';
+    el.style.backgroundColor = '#FADBD8';
+    el.title = 'รูปแบบไม่ถูกต้อง ต้องเป็น HH:MM:SS เช่น 08:30:00';
+  } else {
+    el.style.borderColor = '#93C6E0';
+    el.style.backgroundColor = '#F0F8FE';
+    el.title = '';
+  }
+}
+
+// คืนค่า HH:MM:SS หรือ null (ใช้ก่อน fetch)
+function getTimeVal(id) {
+  const v = document.getElementById(id).value.trim();
+  if (!v) return null;
+  // ถ้ากรอกแค่ HH:MM → เติม :00 อัตโนมัติ
+  if (/^\d{1,2}:\d{2}$/.test(v)) return v + ':00';
+  return v;
+}
+
+// ── Flatpickr date pickers ────────────────────────────────────────────────
+let fpFrom, fpTo, fpStart, fpEnd, fpModal;
+document.addEventListener('DOMContentLoaded', () => {
+  const fpOpts = { dateFormat:'Y-m-d', altInput:true, altFormat:'d/m/Y',
+                   locale:{ firstDayOfWeek:1 }, allowInput:true };
+  fpFrom  = flatpickr('#fDateFrom', fpOpts);
+  fpTo    = flatpickr('#fDateTo',   fpOpts);
+  fpStart = flatpickr('#startDate', fpOpts);
+  fpEnd   = flatpickr('#endDate',   fpOpts);
+  fpModal = flatpickr('#mDate',     fpOpts);
+  // init bulk bar state จาก server-rendered rows
+  updateBulkBar();
+});
+
+// ── Row selection ─────────────────────────────────────────────────────────
+let selRow = null, selData = null;
+function selectRow(tr, data) {
+  if (selRow) selRow.classList.remove('row-sel');
+  selRow = tr; selData = data;
+  tr.classList.add('row-sel');
+  // Fill form with selected row data
+  if (data) {
+    document.getElementById('clinicSel').value   = data.oapp_clinic || '';
+    document.getElementById('limitCount').value  = data.oapp_limit  || '';
+    document.getElementById('noteText').value    = data.limit_note  || '';
+    if (data.oapp_date) {
+      // data.oapp_date เป็น string 'YYYY-MM-DD' จาก TO_CHAR
+      const iso = String(data.oapp_date).substring(0,10);
+      fpStart.setDate(iso, true);
+      fpEnd.setDate(iso, true);
+    }
+  }
+}
+
+// ── List navigation ───────────────────────────────────────────────────────
+function listNav(dir) {
+  const rows = [...document.querySelectorAll('#recordBody tr[data-id]')];
+  if (!rows.length) return;
+  if (!selRow) { rows[0].click(); return; }
+  const i = rows.indexOf(selRow);
+  ({first:()=>rows[0].click(), last:()=>rows[rows.length-1].click(),
+    prev:()=>rows[Math.max(0,i-1)].click(),
+    next:()=>rows[Math.min(rows.length-1,i+1)].click()})[dir]();
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────
+async function deleteSelected() {
+  if (!selRow || !selData) { showAlert('warning','กรุณาเลือกรายการก่อน'); return; }
+  if (!confirm('ต้องการลบรายการที่เลือกหรือไม่?')) return;
+  try {
+    const res  = await fetch(`/api/records/${selData.oapp_limit_id}`, { method:'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      selRow.remove(); selRow = null; selData = null;
+      updateCount();
+      showAlert('success','ลบรายการเรียบร้อยแล้ว');
+    } else {
+      showAlert('danger','ลบล้มเหลว: ' + data.msg);
+    }
+  } catch(e) { showAlert('danger','เกิดข้อผิดพลาด: ' + e.message); }
+}
+function updateCount() {
+  const n = document.querySelectorAll('#recordBody tr[data-id]').length;
+  document.getElementById('recCount').textContent = n + ' รายการ';
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────
+async function filterRecords() {
+  const df = document.getElementById('fDateFrom').value;
+  const dt = document.getElementById('fDateTo').value;
+  const cl = document.getElementById('fClinic').value;
+
+  const btn = document.querySelector('[onclick="filterRecords()"]');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังค้นหา...';
+  btn.disabled = true;
+
+  try {
+    const qs = new URLSearchParams();
+    if (df) qs.set('date_from', df);
+    if (dt) qs.set('date_to',   dt);
+    if (cl) qs.set('clinic',    cl);
+
+    const res  = await fetch('/api/records?' + qs.toString());
+    const data = await res.json();
+
+    if (!data.ok) { showAlert('danger', 'ค้นหาล้มเหลว: ' + data.msg); return; }
+    renderTable(data.records);
+  } finally {
+    btn.innerHTML = '<i class="bi bi-search me-1"></i>ค้นหา';
+    btn.disabled  = false;
+  }
+}
+
+function clearFilter() {
+  fpFrom.clear(); fpTo.clear();
+  document.getElementById('fClinic').value = '';
+  filterRecords();
+}
+
+// ── Render table from API response ────────────────────────────────────────
+function renderTable(records) {
+  const tbody = document.getElementById('recordBody');
+  selRow = null; selData = null;
+
+  const chkAll = document.getElementById('chkAll');
+  if (chkAll) chkAll.checked = false;
+  updateBulkBar();
+
+  if (!records || records.length === 0) {
+    tbody.innerHTML = `<tr id="noDataRow">
+      <td colspan="12" class="text-center py-5" style="color:#5D7080;font-size:1rem">
+        <i class="bi bi-inbox me-2"></i>&lt;No data to display&gt;
+      </td></tr>`;
+    document.getElementById('recCount').textContent = '0 รายการ';
+    return;
+  }
+
+  const fmtD = (v) => {
+    if (!v) return '';
+    try {
+      let d;
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+        const [y,m,day] = v.substring(0,10).split('-').map(Number);
+        d = new Date(y, m-1, day);        // local parse — ไม่ shift timezone
+      } else { d = new Date(v); }
+      if (isNaN(d)) return String(v);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    } catch(_){ return String(v); }
+  };
+  const fmtT = (v) => {
+    if (!v) return '';
+    if (typeof v === 'string') {
+      const p = v.split(':');
+      const h = (p[0]||'00').padStart(2,'0');
+      const m = (p[1]||'00').padStart(2,'0');
+      const s = (p[2]||'00').padStart(2,'0');
+      return `${h}:${m}:${s}`;
+    }
+    return String(v);
+  };
+
+  tbody.innerHTML = records.map((r,i) => {
+    const rowJson = JSON.stringify(r).replace(/"/g,'&quot;');
+    return `
+    <tr data-id="${r.oapp_limit_id||i}" data-row="${rowJson}" style="cursor:pointer"
+        onclick="selectRowJS(this,${JSON.stringify(JSON.stringify(r))})">
+      <td class="text-center" onclick="event.stopPropagation()">
+        <input type="checkbox" class="form-check-input row-check"
+               data-id="${r.oapp_limit_id||i}" onchange="updateBulkBar()">
+      </td>
+      <td class="text-center fw-semibold">${i+1}</td>
+      <td>${fmtD(r.oapp_date)}</td>
+      <td class="text-center" style="color:#5D3A9B;font-weight:600">${thaiDayJS(r.oapp_date)}</td>
+      <td class="text-center fw-semibold" style="color:#1A4F72">${r.oapp_clinic||''}</td>
+      <td style="font-size:0.88rem">${r.clinic_name||''}</td>
+      <td class="text-center fw-bold" style="color:#1A4F72">${r.oapp_limit||''}</td>
+      <td>${fmtT(r.start_time)}</td>
+      <td>${fmtT(r.end_time)}</td>
+      <td class="text-center">${r.check_time||''}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+          title="${r.limit_note||''}">${r.limit_note||''}</td>
+      <td class="text-center">
+        <button class="btn btn-xs"
+                style="background:#2471A3;color:#fff;border:none;border-radius:4px;padding:2px 7px"
+                title="แก้ไขรายการนี้"
+                onclick="event.stopPropagation();openModal(JSON.parse(this.closest('tr').dataset.row))">
+          <i class="bi bi-pencil-square"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('recCount').textContent = records.length + ' รายการ';
+  updateBulkBar();
+}
+
+function selectRowJS(tr, jsonStr) {
+  selectRow(tr, JSON.parse(jsonStr));
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────
+function clearForm() {
+  ['startTime','endTime','limitCount','noteText'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  fpStart.clear(); fpEnd.clear();
+  document.getElementById('checkTime').checked = false;
+  ['clinicSel','weekSel'].forEach(id =>
+    document.getElementById(id).value = '');
+  document.getElementById('noHoliday').checked = false;
+  document.querySelectorAll('.day-check').forEach(cb => cb.checked = false);
+  updateToggleDaysBtn();
+  if (selRow) selRow.classList.remove('row-sel');
+  selRow = null; selData = null;
+}
+
+// ── Collect form values ───────────────────────────────────────────────────
+function getFormValues() {
+  return {
+    clinic:     document.getElementById('clinicSel').value,
+    start:      document.getElementById('startDate').value,
+    end:        document.getElementById('endDate').value,
+    days:       [...document.querySelectorAll('.day-check:checked')].map(c=>c.value),
+    week:       document.getElementById('weekSel').value,
+    limit:      document.getElementById('limitCount').value,
+    start_time:  getTimeVal('startTime'),
+    end_time:    getTimeVal('endTime'),
+    check_time:  document.getElementById('checkTime').checked ? 'Y' : '0',
+    note:       document.getElementById('noteText').value,
+    noHoliday:  document.getElementById('noHoliday').checked
+  };
+}
+
+// ── Preview → Confirm → Insert ────────────────────────────────────────────
+async function createRecords() {
+  const f = getFormValues();
+  if (!f.clinic)           { showAlert('warning','กรุณาเลือกคลินิก'); return; }
+  if (!f.start || !f.end)  { showAlert('warning','กรุณาระบุวันที่เริ่มต้นและสิ้นสุด'); return; }
+  if (!f.days.length)      { showAlert('warning','กรุณาเลือกอย่างน้อย 1 วัน'); return; }
+  if (!f.limit || isNaN(parseInt(f.limit)))
+                           { showAlert('warning','กรุณาระบุจำนวนจำกัด'); return; }
+
+  // Step 1: preview
+  const prev = await fetch('/api/preview-dates', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ start:f.start, end:f.end, days:f.days, week:f.week })
+  });
+  const pd = await prev.json();
+  if (!pd.ok || !pd.dates.length) {
+    showAlert('warning','ไม่พบวันที่ตรงตามเงื่อนไขที่เลือก'); return;
+  }
+
+  // Step 2: confirm
+  const clinicTxt = document.getElementById('clinicSel').selectedOptions[0]?.text || f.clinic;
+  // แปลง yyyy-mm-dd → dd/mm/yyyy สำหรับ confirm dialog
+  const toThai = iso => {
+    if (!iso) return '';
+    const [y,m,d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+  const previewDates = pd.dates.slice(0,10).map(toThai).join('\n') +
+                       (pd.dates.length>10 ? `\n...อีก ${pd.dates.length-10} วัน` : '');
+  const ok = confirm(
+    `══ ยืนยันการสร้างรายการ ══\n\n` +
+    `คลินิก     : ${clinicTxt}\n` +
+    `จำนวนจำกัด : ${f.limit} ราย/slot\n` +
+    `เวลา       : ${f.start_time||'-'} — ${f.end_time||'-'}\n` +
+    `จำนวนวัน   : ${pd.count} วัน\n\n` +
+    `รายการวันที่ :\n${previewDates}\n\n` +
+    `กด OK เพื่อยืนยันการ Insert ${pd.count} รายการ`
+  );
+  if (!ok) return;
+
+  // Step 3: insert
+  const btn = document.querySelector('[onclick="createRecords()"]');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังสร้าง...';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch('/api/create-records', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(f)
+    });
+    const data = await res.json();
+    showAlert(data.ok ? 'success' : 'danger', data.msg);
+    if (data.ok) {
+      clearForm();
+      // Set filter to date range just inserted so user can see new records
+      if (data.filter) {
+        if (data.filter.date_from) fpFrom.setDate(data.filter.date_from, true); else fpFrom.clear();
+        if (data.filter.date_to)   fpTo.setDate(data.filter.date_to,   true); else fpTo.clear();
+        document.getElementById('fClinic').value   = data.filter.clinic    || '';
+      }
+      filterRecords();
+    }
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled  = false;
+  }
+}
+
+function saveData() { showAlert('info','ใช้ปุ่ม "แก้ไข" บนแถบรายการเพื่อแก้ไขข้อมูล'); }
+
+// ── Modal: เพิ่ม / แก้ไขรายการรายวัน ────────────────────────────────────
+// rowData = null → เพิ่มใหม่ | rowData = object → แก้ไข
+function openModal(rowData = null) {
+  const isEdit  = rowData !== null;
+  const delBtn  = document.getElementById('mDeleteBtn');
+  document.getElementById('modalTitleTxt').textContent = isEdit ? 'แก้ไขรายการ' : 'เพิ่มรายการใหม่';
+  delBtn.classList.toggle('d-none', !isEdit);
+
+  if (isEdit) {
+    document.getElementById('mId').value        = rowData.oapp_limit_id || '';
+    fpModal.setDate(String(rowData.oapp_date||'').substring(0,10), true);
+    document.getElementById('mClinic').value    = rowData.oapp_clinic  || '';
+    document.getElementById('mLimit').value     = rowData.oapp_limit   ?? '0';
+    document.getElementById('mStartTime').value = rowData.start_time   || '';
+    document.getElementById('mEndTime').value   = rowData.end_time     || '';
+    document.getElementById('mCheck').checked   = rowData.check_time   === 'Y';
+    document.getElementById('mNote').value      = rowData.limit_note   || '';
+  } else {
+    document.getElementById('mId').value        = '';
+    fpModal.clear();
+    document.getElementById('mClinic').value    = '';
+    document.getElementById('mLimit').value     = '0';
+    document.getElementById('mStartTime').value = '';
+    document.getElementById('mEndTime').value   = '';
+    document.getElementById('mCheck').checked   = false;
+    document.getElementById('mNote').value      = '';
+  }
+  document.getElementById('modalAlert').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+async function deleteFromModal() {
+  const id = document.getElementById('mId').value;
+  if (!id) return;
+  if (!confirm('ต้องการลบรายการนี้หรือไม่?')) return;
+  try {
+    const res  = await fetch(`/api/records/${id}`, { method:'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+      showAlert('success','ลบรายการเรียบร้อยแล้ว');
+      filterRecords();
+    } else {
+      setModalAlert('danger','ลบล้มเหลว: ' + data.msg);
+    }
+  } catch(e) { setModalAlert('danger','เกิดข้อผิดพลาด: '+e.message); }
+}
+
+async function saveRecord() {
+  const id      = document.getElementById('mId').value;
+  const payload = {
+    oapp_date:  document.getElementById('mDate').value,
+    oapp_clinic:document.getElementById('mClinic').value,
+    oapp_limit: document.getElementById('mLimit').value,
+    start_time: getTimeVal('mStartTime'),
+    end_time:   getTimeVal('mEndTime'),
+    check_time: document.getElementById('mCheck').checked ? 'Y' : '0',
+    limit_note: document.getElementById('mNote').value,
+  };
+  if (!payload.oapp_date)   { setModalAlert('danger','กรุณาระบุวันที่'); return; }
+  if (!payload.oapp_clinic) { setModalAlert('danger','กรุณาเลือกคลินิก'); return; }
+
+  const isEdit = !!id;
+  const url    = isEdit ? `/api/records/${id}` : '/api/records';
+  try {
+    const res  = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+      showAlert('success', data.msg);
+      filterRecords();
+    } else {
+      setModalAlert('danger', data.msg);
+    }
+  } catch(e) { setModalAlert('danger','เกิดข้อผิดพลาด: '+e.message); }
+}
+
+// ── Bulk select ───────────────────────────────────────────────────────────
+function getSelectedIds() {
+  return [...document.querySelectorAll('.row-check:checked')].map(cb => cb.dataset.id);
+}
+function updateBulkBar() {
+  const ids    = getSelectedIds();
+  const cnt    = document.getElementById('bulkCount');
+  const master = document.getElementById('masterCheck');
+  const total  = document.querySelectorAll('.row-check').length;
+  const has    = ids.length > 0;
+  cnt.textContent = `${ids.length} รายการที่เลือก`;
+  document.getElementById('bulkBar').classList.toggle('d-none', !has);
+  // master checkbox state
+  if (master) {
+    master.indeterminate = has && ids.length < total;
+    master.checked       = total > 0 && ids.length === total;
+  }
+  // enable/disable action buttons
+  const btnEdit = document.getElementById('btnBulkEdit');
+  const btnDel  = document.getElementById('btnBulkDel');
+  if (btnEdit) { btnEdit.disabled = !has; btnEdit.style.opacity = has ? '1' : '0.4'; }
+  if (btnDel)  { btnDel.disabled  = !has; btnDel.style.opacity  = has ? '1' : '0.4'; }
+  // sync chkAll in table header
+  const chkAll = document.getElementById('chkAll');
+  if (chkAll) { chkAll.indeterminate = has && ids.length < total; chkAll.checked = total > 0 && ids.length === total; }
+}
+function toggleMasterCheck() {
+  const master = document.getElementById('masterCheck');
+  const checks = document.querySelectorAll('.row-check');
+  const allChecked = [...checks].every(cb => cb.checked);
+  checks.forEach(cb => { cb.checked = !allChecked; });
+  updateBulkBar();
+}
+function selectAll() {
+  document.querySelectorAll('.row-check').forEach(cb => { cb.checked = true; });
+  updateBulkBar();
+}
+function toggleSelectAll(chk) {
+  document.querySelectorAll('.row-check').forEach(cb => { cb.checked = chk.checked; });
+  updateBulkBar();
+}
+function clearSelection() {
+  document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+  updateBulkBar();
+}
+
+// ── Bulk delete ───────────────────────────────────────────────────────────
+async function bulkDelete() {
+  const ids = getSelectedIds();
+  if (!ids.length) return;
+  if (!confirm(`ต้องการลบ ${ids.length} รายการที่เลือกหรือไม่?\nการดำเนินการนี้ไม่สามารถยกเลิกได้`)) return;
+  try {
+    const res  = await fetch('/api/records/bulk', {
+      method:'DELETE', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json();
+    showAlert(data.ok ? 'success' : 'danger', data.msg);
+    if (data.ok) { clearSelection(); filterRecords(); }
+  } catch(e) { showAlert('danger','เกิดข้อผิดพลาด: '+e.message); }
+}
+
+// ── Bulk edit ─────────────────────────────────────────────────────────────
+function openBulkEditModal() {
+  const ids = getSelectedIds();
+  if (!ids.length) return;
+  document.getElementById('bulkEditTitle').textContent = `แก้ไข ${ids.length} รายการที่เลือก`;
+  ['bApplyLimit','bApplyTime','bApplyCheck','bApplyNote'].forEach(id=>{
+    document.getElementById(id).checked = false;
+  });
+
+  document.getElementById('bLimit').value     = '';
+  document.getElementById('bStartTime').value = '';
+  document.getElementById('bEndTime').value   = '';
+  document.getElementById('bCheck').checked   = false;
+  document.getElementById('bNote').value      = '';
+  document.getElementById('bulkEditAlert').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('bulkEditModal')).show();
+}
+async function saveBulkEdit() {
+  const ids = getSelectedIds();
+  const apply = {
+    limit: document.getElementById('bApplyLimit').checked,
+    time:  document.getElementById('bApplyTime').checked,
+    check: document.getElementById('bApplyCheck').checked,
+    note:  document.getElementById('bApplyNote').checked,
+  };
+  if (!Object.values(apply).some(Boolean)) {
+    const el = document.getElementById('bulkEditAlert');
+    el.className = 'alert alert-warning py-2 mb-3';
+    el.textContent = 'กรุณาเลือกอย่างน้อย 1 ฟิลด์ที่ต้องการแก้ไข';
+    el.classList.remove('d-none');
+    return;
+  }
+  const fields = {
+    oapp_limit: document.getElementById('bLimit').value,
+    start_time: document.getElementById('bStartTime').value,
+    end_time:   document.getElementById('bEndTime').value,
+    check_time: document.getElementById('bCheck').checked ? 'Y' : '0',
+    limit_note: document.getElementById('bNote').value,
+  };
+  try {
+    const res  = await fetch('/api/records/bulk', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ids, fields, apply })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('bulkEditModal')).hide();
+      showAlert('success', data.msg);
+      clearSelection();
+      filterRecords();
+    } else {
+      const el = document.getElementById('bulkEditAlert');
+      el.className = 'alert alert-danger py-2 mb-3';
+      el.textContent = data.msg;
+      el.classList.remove('d-none');
+    }
+  } catch(e) {
+    const el = document.getElementById('bulkEditAlert');
+    el.className = 'alert alert-danger py-2 mb-3';
+    el.textContent = 'เกิดข้อผิดพลาด: '+e.message;
+    el.classList.remove('d-none');
+  }
+}
+
+function setModalAlert(type, msg) {
+  const el = document.getElementById('modalAlert');
+  el.className = `alert alert-${type} py-2 mt-3`;
+  el.textContent = msg;
+}
+
+// ── Alert ─────────────────────────────────────────────────────────────────
+function showAlert(type, msg) {
+  const el = document.getElementById('formAlert');
+  el.className = `alert alert-${type} alert-dismissible fade show py-2 mx-3 mt-2`;
+  document.getElementById('formAlertMsg').textContent = msg;
+}
+function hideAlert() {
+  const el = document.getElementById('formAlert');
+  el.classList.remove('show'); el.classList.add('d-none');
+}
+</script>
+</body></html>
