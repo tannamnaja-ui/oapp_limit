@@ -1,17 +1,13 @@
-#define MyAppName "ระบบจำกัดนัดคลินิก"
-#define MyAppNameEn "Oapp-Limit"
+#define MyAppName "Oapp-Limit"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "HOSxP"
-#define MyAppURL "https://github.com/imhosxp4-byte/oapp_limit"
-#define AppRoot "..\"
 
 [Setup]
-AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567891}
+AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567892}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-AppPublisherURL={#MyAppURL}
 DefaultDirName={autopf}\Oapp-Limit
 DefaultGroupName={#MyAppName}
 OutputDir=..\dist
@@ -21,54 +17,42 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
-; ลบเวอร์ชันเก่าก่อนติดตั้งใหม่
 CloseApplications=yes
-CloseApplicationsFilter=*node*,*wscript*
 UninstallDisplayName={#MyAppName}
-UninstallDisplayIcon={app}\icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "สร้าง Shortcut หน้า Desktop"; GroupDescription: "เพิ่มเติม:"; Flags: checked
+Name: desktopicon; Description: "Create Desktop Shortcut"; GroupDescription: "Options:"; Flags: checked
 
 [Files]
-; App source files
-Source: "{#AppRoot}server.js";           DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}package.json";         DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}package-lock.json";    DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}config.py";            DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}main.py";              DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}requirements.txt";     DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}static\*";             DestDir: "{app}\static";    Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AppRoot}views\*";              DestDir: "{app}\views";     Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AppRoot}templates\*";          DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AppRoot}database\*";           DestDir: "{app}\database";  Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AppRoot}ui\*";                 DestDir: "{app}\ui";        Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AppRoot}node_modules\*";       DestDir: "{app}\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs
-; VBScript launchers (ไม่มี command prompt)
-Source: "{#AppRoot}_installer\launcher.vbs";    DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AppRoot}_installer\stop_server.vbs"; DestDir: "{app}"; Flags: ignoreversion
-; Node.js offline installer
-Source: "{#AppRoot}_installer\node-setup.msi";  DestDir: "{tmp}"; Flags: deleteafterinstall
-; Icon
-Source: "{#AppRoot}_installer\icon.ico";        DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\server.js";             DestDir: "{app}"; Flags: ignoreversion
+Source: "..\package.json";           DestDir: "{app}"; Flags: ignoreversion
+Source: "..\package-lock.json";      DestDir: "{app}"; Flags: ignoreversion
+Source: "..\config.py";              DestDir: "{app}"; Flags: ignoreversion
+Source: "..\main.py";                DestDir: "{app}"; Flags: ignoreversion
+Source: "..\requirements.txt";       DestDir: "{app}"; Flags: ignoreversion
+Source: "..\static\*";               DestDir: "{app}\static";    Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\views\*";                DestDir: "{app}\views";     Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\templates\*";            DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\database\*";             DestDir: "{app}\database";  Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\ui\*";                   DestDir: "{app}\ui";        Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\node_modules\*";         DestDir: "{app}\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: ".\_installer\launcher.vbs";    DestDir: "{app}"; Flags: ignoreversion
+Source: ".\_installer\stop_server.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\_installer\node-setup.msi";  DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
-; Start Menu
-Name: "{group}\เปิดโปรแกรม";             Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"
-Name: "{group}\หยุดเซิร์ฟเวอร์";         Filename: "{sys}\wscript.exe"; Parameters: """{app}\stop_server.vbs"""; WorkingDir: "{app}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 131
-Name: "{group}\ถอนการติดตั้ง";           Filename: "{uninstallexe}"
-; Desktop shortcut
-Name: "{autodesktop}\{#MyAppName}";       Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
+Name: "{group}\Open {#MyAppName}";     Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"
+Name: "{group}\Stop Server";           Filename: "{sys}\wscript.exe"; Parameters: """{app}\stop_server.vbs"""; WorkingDir: "{app}"
+Name: "{group}\Uninstall";             Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#MyAppName}";    Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-; ติดตั้ง Node.js ถ้ายังไม่มี (ข้ามถ้ามีแล้ว)
-Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\node-setup.msi"" /qn /norestart ADDLOCAL=ALL"; Check: not IsNodeInstalled; StatusMsg: "กำลังติดตั้ง Node.js..."; Flags: waituntilterminated
+Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\node-setup.msi"" /qn /norestart ADDLOCAL=ALL"; Check: not IsNodeInstalled; StatusMsg: "Installing Node.js..."; Flags: waituntilterminated
 Filename: "{sys}\cmd.exe"; Parameters: "/c setx PATH ""%ProgramFiles%\nodejs;%PATH%"" /M"; Flags: runhidden waituntilterminated; Check: not IsNodeInstalled
-; เปิดโปรแกรมหลังติดตั้ง
-Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"; Description: "เปิดโปรแกรม"; Flags: nowait postinstall skipifsilent
+Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"; Description: "Launch application"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\wscript.exe"; Parameters: """{app}\stop_server.vbs"""; Flags: runhidden waituntilterminated
