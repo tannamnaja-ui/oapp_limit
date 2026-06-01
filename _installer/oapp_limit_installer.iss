@@ -24,7 +24,7 @@ UninstallDisplayName={#MyAppName}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: desktopicon; Description: "Create Desktop Shortcut"; GroupDescription: "Options:"; Flags: checked
+Name: desktopicon; Description: "Create Desktop Shortcut"; GroupDescription: "Options:"
 
 [Files]
 Source: "..\server.js";             DestDir: "{app}"; Flags: ignoreversion
