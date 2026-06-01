@@ -1,0 +1,98 @@
+name: Build Oapp-Limit-Full.exe
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install npm packages
+        run: npm install
+        working-directory: .
+
+      - name: Download Node.js MSI (offline bundle)
+        shell: pwsh
+        run: |
+          $url = "https://nodejs.org/dist/v18.20.4/node-v18.20.4-x64.msi"
+          $out = "_installer\node-setup.msi"
+          Write-Output "Downloading Node.js MSI..."
+          Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+          Write-Output "Downloaded: $((Get-Item $out).Length / 1MB) MB"
+
+      - name: Create simple icon
+        shell: pwsh
+        run: |
+          # สร้าง icon.ico อย่างง่าย (copy shell32 icon)
+          $src = "$env:SystemRoot\System32\shell32.dll"
+          # ถ้าไม่มี icon ให้ข้าม
+          if (-not (Test-Path "_installer\icon.ico")) {
+            Write-Output "No icon.ico found, will use default"
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          Write-Output "Inno Setup installed"
+
+      - name: Create dist folder
+        run: New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          Write-Output "Using ISCC: $iscc"
+          & $iscc "_installer\oapp_limit_installer.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Output "Build complete"
+
+      - name: Find output file
+        id: find_exe
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path dist -Filter "*.exe" | Select-Object -First 1
+          echo "EXE_PATH=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          echo "EXE_NAME=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          Write-Output "Found: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-build${{ github.run_number }}
+          name: "Oapp-Limit-Full v1.0.0-build${{ github.run_number }}"
+          body: |
+            ## ⬇️ ดาวน์โหลด
+            คลิกที่ไฟล์ **`${{ steps.find_exe.outputs.EXE_NAME }}`** ด้านล่าง
+
+            ## 📋 วิธีติดตั้ง
+            1. ดาวน์โหลดไฟล์ `Oapp-Limit-Full.exe`
+            2. ดับเบิลคลิกเพื่อติดตั้ง (**ไม่ต้องใช้ internet**)
+            3. ถ้ามีโปรแกรมเก่า จะถูกแทนที่อัตโนมัติ
+            4. เปิดจาก Desktop shortcut **"ระบบจำกัดนัดคลินิก"**
+            5. โปรแกรมเปิด browser ที่ **http://localhost:3300** โดยไม่มี command prompt
+
+            ## ℹ️ หมายเหตุ
+            - Node.js รวมอยู่ในตัวติดตั้งแล้ว (offline)
+            - ถ้ามี Node.js อยู่แล้วจะข้ามการติดตั้ง Node.js
+            - สร้าง Desktop shortcut อัตโนมัติ
+          files: dist/*.exe
+          draft: false
+          prerelease: false
