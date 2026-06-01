@@ -39,9 +39,9 @@ Source: "..\templates\*";            DestDir: "{app}\templates"; Flags: ignoreve
 Source: "..\database\*";             DestDir: "{app}\database";  Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\ui\*";                   DestDir: "{app}\ui";        Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\node_modules\*";         DestDir: "{app}\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: ".\_installer\launcher.vbs";    DestDir: "{app}"; Flags: ignoreversion
-Source: ".\_installer\stop_server.vbs"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".\_installer\node-setup.msi";  DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: ".\launcher.vbs";    DestDir: "{app}"; Flags: ignoreversion
+Source: ".\stop_server.vbs"; DestDir: "{app}"; Flags: ignoreversion
+Source: ".\node-setup.msi";  DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\Open {#MyAppName}";     Filename: "{sys}\wscript.exe"; Parameters: """{app}\launcher.vbs"""; WorkingDir: "{app}"
